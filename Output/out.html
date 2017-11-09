@@ -1,0 +1,796 @@
+<html><pre>
+
+1   <font color='#00FF00'>/*
+    FlexCOS - Copyright (C) 2013 AGSI, Department of Computer Science, FU-Berlin
+    FOR MORE INFORMATION AND INSTRUCTION PLEASE VISIT
+    http://www.inf.fu-berlin.de/groups/ag-si/smart.html
+    This file is part of the FlexCOS project.
+    FlexCOS is free software; you can redistribute it and/or modify it under
+    the terms of the GNU General Public License (version 3) as published by the
+    Free Software Foundation.
+    Some parts of this software are from different projects. These files carry
+    a different license in their header.
+    FlexCOS is distributed in the hope that it will be useful, but WITHOUT ANY
+    WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+    FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+    details. You should have received a copy of the GNU General Public License
+    along with FlexCOS; if not it can be viewed here:
+    http://www.gnu.org/licenses/gpl-3.0.txt and also obtained by writing to
+    AGSI, contact details for whom are available on the FlexCOS WEB site.
+*/</font>
+2   <font color='#FF00FF'><b>#include &lt;const.h&gt;</b></font>
+3   <font color='#FF00FF'><b>#include &lt;types.h&gt;</b></font>
+4   <font color='#FF00FF'><b>#include &lt;array.h&gt;</b></font>
+5   <font color='#FF00FF'><b>#include &lt;stdio.h&gt;</b></font>
+6   <font color='#FF00FF'><b>#include &lt;unistd.h&gt;</b></font>
+7   <font color='#FF00FF'><b>#include &lt;errno.h&gt;</b></font>
+8   <font color='#FF00FF'><b>#include &lt;time.h&gt;</b></font>
+9   <font color='#FF00FF'><b>#include &lt;miracl.h&gt;</b></font>
+10  <font color='#FF00FF'><b>#include &lt;string.h&gt;</b></font>
+11  <font color='#FF00FF'><b>#include &lt;ecc.h&gt;</b></font>
+12  <font color='#FF00FF'><b>#include &lt;octet.h&gt;</b></font>
+13  <font color='#FF00FF'><b>#include &lt;cryptools.h&gt;</b></font>
+14  <font color='#FF00FF'><b>#ifndef MAX_HASH_BYTES</b></font>
+15  <font color='#FF00FF'><b>#define MAX_HASH_BYTES 32</b></font>
+16  <font color='#FF00FF'><b>#endif</b></font>
+17  <a name='csprng'><font color='#0000FF'>csprng</font></a> <a name='RNG'><font color='#0000FF'>RNG</font></a>;
+18  <a href='#csprng'><font color='#0000FF'>csprng</font></a> <b>*</b><font color='#0000FF'><b>const</font></b> <a name='rng'><font color='#0000FF'>rng</font></a> <b>=</b><b>&amp;</b><a href='#RNG'><font color='#0000FF'>RNG</font></a>;
+19  <font color='#FF00FF'><b>#define AES_BLKSZ 16</b></font>
+20  <a name='PUBLIC'><font color='#0000FF'>PUBLIC</font></a> <a name='oltype'><font color='#0000FF'>oltype</font></a> <a name='ecp_2_octet'><font color='#0000FF'>ecp_2_octet</font></a>(<font color='#0000FF'><b>const</font></b> <a name='epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><b>,</b><a name='octet'><font color='#0000FF'>octet</font></a> <b>*</b>);
+21  <a href='#PUBLIC'><font color='#0000FF'>PUBLIC</font></a> <a href='#oltype'><font color='#0000FF'>oltype</font></a> <a name='octet_2_ecp'><font color='#0000FF'>octet_2_ecp</font></a>(<font color='#0000FF'><b>const</font></b> <a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><b>,</b><a name='u32'><font color='#0000FF'>u32</font></a><b>,</b><a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b>);
+22  <font color='#00FF00'>/**
+ *  An alias for 'ecp_2_octet'
+ */</font>
+23  <a name='PRIVATE'><font color='#0000FF'>PRIVATE</font></a> <a name='inline'><font color='#0000FF'>inline</font></a> <a href='#oltype'><font color='#0000FF'>oltype</font></a> <a name='octet_put_epoint'><font color='#0000FF'>octet_put_epoint</font></a>(<a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a name='o'><font color='#0000FF'>o</font></a><b>,</b><font color='#0000FF'><b>const</font></b> <a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><a name='P'><font color='#0000FF'>P</font></a>)
+24  {
+25      <font color='#0000FF'><b>return</font></b> <a href='#ecp_2_octet'><font color='#0000FF'>ecp_2_octet</font></a>(<a href='#P'><font color='#0000FF'>P</font></a><b>,</b><a href='#o'><font color='#0000FF'>o</font></a>);
+26      
+27  }
+28  <a href='#PRIVATE'><font color='#0000FF'>PRIVATE</font></a> <a href='#inline'><font color='#0000FF'>inline</font></a> <a href='#oltype'><font color='#0000FF'>oltype</font></a> <a name='octet_put_big'><font color='#0000FF'>octet_put_big</font></a>(<a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#o'><font color='#0000FF'>o</font></a><b>,</b><font color='#0000FF'><b>const</font></b> <a name='big'><font color='#0000FF'>big</font></a> <a name='b'><font color='#0000FF'>b</font></a>)
+29  {
+30      <a href='#oltype'><font color='#0000FF'>oltype</font></a> <a name='bytes'><font color='#0000FF'>bytes</font></a>;
+31      <font color='#00FF00'>// TODO check parameter</font>
+32      <font color='#00FF00'>// TODO use correct byte length</font>
+33      <a href='#bytes'><font color='#0000FF'>bytes</font></a> <b>=</b><a href='#b'><font color='#0000FF'>b</font></a><b>-&gt;</b><a name='len'><font color='#0000FF'>len</font></a> <b>*</b><font color='#0000FF'><b>sizeof</font></b>(<a name='mr_small'><font color='#0000FF'>mr_small</font></a>);
+34      <font color='#0000FF'><b>if</font></b> (<b>!</b><a name='octet_has_bytes_free'><font color='#0000FF'>octet_has_bytes_free</font></a>(<a href='#o'><font color='#0000FF'>o</font></a><b>,</b><a href='#bytes'><font color='#0000FF'>bytes</font></a>))<font color='#0000FF'><b>return</font></b> <font color='#00FFFF'><I>0</I></font>;
+35      <a href='#o'><font color='#0000FF'>o</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a> <b>+=</b><a name='big_to_bytes'><font color='#0000FF'>big_to_bytes</font></a>(<a href='#bytes'><font color='#0000FF'>bytes</font></a><b>,</b><a href='#b'><font color='#0000FF'>b</font></a><b>,</b><a name='octet_end'><font color='#0000FF'>octet_end</font></a>(<a href='#o'><font color='#0000FF'>o</font></a>)<b>,</b><a name='TRUE'><font color='#0000FF'>TRUE</font></a>);
+36      <font color='#0000FF'><b>return</font></b> <a href='#bytes'><font color='#0000FF'>bytes</font></a>;
+37      
+38  }
+39  <font color='#00FF00'>/**
+ * @Note Not applicable for CFBn and PCFBn modes.
+ */</font>
+40  <a href='#PRIVATE'><font color='#0000FF'>PRIVATE</font></a> <font color='#0000FF'><b>void</font></b> <a name='aes_encrypt_all'><font color='#0000FF'>aes_encrypt_all</font></a>(<a name='aes'><font color='#0000FF'>aes</font></a> <b>*</b><a name='ae'><font color='#0000FF'>ae</font></a><b>,</b><font color='#0000FF'><b>char</font></b> <b>*</b><a name='m'><font color='#0000FF'>m</font></a><b>,</b><a href='#u32'><font color='#0000FF'>u32</font></a> <a name='length'><font color='#0000FF'>length</font></a>)
+41  {
+42      <font color='#0000FF'><b>char</font></b> <b>*</b><a name='blk'><font color='#0000FF'>blk</font></a>;
+43      <font color='#0000FF'><b>if</font></b> (<a href='#length'><font color='#0000FF'>length</font></a> <b>%</b><a name='AES_BLKSZ'><font color='#0000FF'>AES_BLKSZ</font></a>)<font color='#0000FF'><b>return</font></b>;
+44      <font color='#0000FF'><b>for</font></b> (<a href='#blk'><font color='#0000FF'>blk</font></a> <b>=</b><a href='#m'><font color='#0000FF'>m</font></a>; <a href='#blk'><font color='#0000FF'>blk</font></a> <b>&lt;</b>(<a href='#m'><font color='#0000FF'>m</font></a> <b>+</b><a href='#length'><font color='#0000FF'>length</font></a>); <a href='#blk'><font color='#0000FF'>blk</font></a> <b>+=</b><a href='#AES_BLKSZ'><font color='#0000FF'>AES_BLKSZ</font></a>)<a name='aes_encrypt'><font color='#0000FF'>aes_encrypt</font></a>(<a href='#ae'><font color='#0000FF'>ae</font></a><b>,</b><a href='#blk'><font color='#0000FF'>blk</font></a>);
+45      
+46  }
+47  <a href='#PRIVATE'><font color='#0000FF'>PRIVATE</font></a> <font color='#0000FF'><b>void</font></b> <a name='aes_decrypt_all'><font color='#0000FF'>aes_decrypt_all</font></a>(<a href='#aes'><font color='#0000FF'>aes</font></a> <b>*</b><a href='#ae'><font color='#0000FF'>ae</font></a><b>,</b><font color='#0000FF'><b>char</font></b> <b>*</b><a href='#m'><font color='#0000FF'>m</font></a><b>,</b><a href='#u32'><font color='#0000FF'>u32</font></a> <a href='#length'><font color='#0000FF'>length</font></a>)
+48  {
+49      <font color='#0000FF'><b>char</font></b> <b>*</b><a href='#blk'><font color='#0000FF'>blk</font></a>;
+50      <font color='#0000FF'><b>if</font></b> (<a href='#length'><font color='#0000FF'>length</font></a> <b>%</b><a href='#AES_BLKSZ'><font color='#0000FF'>AES_BLKSZ</font></a>)<font color='#0000FF'><b>return</font></b>;
+51      <font color='#0000FF'><b>for</font></b> (<a href='#blk'><font color='#0000FF'>blk</font></a> <b>=</b><a href='#m'><font color='#0000FF'>m</font></a>; <a href='#blk'><font color='#0000FF'>blk</font></a> <b>&lt;</b>(<a href='#m'><font color='#0000FF'>m</font></a> <b>+</b><a href='#length'><font color='#0000FF'>length</font></a>); <a href='#blk'><font color='#0000FF'>blk</font></a> <b>+=</b><a href='#AES_BLKSZ'><font color='#0000FF'>AES_BLKSZ</font></a>)<a name='aes_decrypt'><font color='#0000FF'>aes_decrypt</font></a>(<a href='#ae'><font color='#0000FF'>ae</font></a><b>,</b><a href='#blk'><font color='#0000FF'>blk</font></a>);
+52      
+53  }
+54  <font color='#00FF00'>/**
+ *  @return number of bytes or zero
+ */</font>
+55  <a href='#PUBLIC'><font color='#0000FF'>PUBLIC</font></a> <a href='#oltype'><font color='#0000FF'>oltype</font></a> <a href='#ecp_2_octet'><font color='#0000FF'>ecp_2_octet</font></a>(<font color='#0000FF'><b>const</font></b> <a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><a href='#P'><font color='#0000FF'>P</font></a><b>,</b><a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#o'><font color='#0000FF'>o</font></a>)
+56  {
+57      <font color='#00FF00'>// TODO bullet proof</font>
+58      <font color='#00FF00'>// TODO optional compression</font>
+59      <font color='#00FF00'>/* do not use compression */</font>
+60      <a name='octet_put'><font color='#0000FF'>octet_put</font></a>(<a href='#o'><font color='#0000FF'>o</font></a><b>,</b><font color='#00FFFF'><I>0x04</I></font>);
+61      <font color='#00FF00'>// FIXME magic number: underlying field size required</font>
+62      <font color='#00FF00'>// not sure: is P-&gt;X-&gt;len too optimistic</font>
+63      <a href='#o'><font color='#0000FF'>o</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a> <b>+=</b><a href='#big_to_bytes'><font color='#0000FF'>big_to_bytes</font></a>(<font color='#00FFFF'><I>24</I></font><b>,</b><a href='#P'><font color='#0000FF'>P</font></a><b>-&gt;</b><a name='X'><font color='#0000FF'>X</font></a><b>,</b><a href='#o'><font color='#0000FF'>o</font></a><b>-&gt;</b><a name='val'><font color='#0000FF'>val</font></a> <b>+</b><a href='#o'><font color='#0000FF'>o</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a><b>,</b><a href='#TRUE'><font color='#0000FF'>TRUE</font></a>);
+64      <a href='#o'><font color='#0000FF'>o</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a> <b>+=</b><a href='#big_to_bytes'><font color='#0000FF'>big_to_bytes</font></a>(<font color='#00FFFF'><I>24</I></font><b>,</b><a href='#P'><font color='#0000FF'>P</font></a><b>-&gt;</b><a name='Y'><font color='#0000FF'>Y</font></a><b>,</b><a href='#o'><font color='#0000FF'>o</font></a><b>-&gt;</b><a href='#val'><font color='#0000FF'>val</font></a> <b>+</b><a href='#o'><font color='#0000FF'>o</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a><b>,</b><a href='#TRUE'><font color='#0000FF'>TRUE</font></a>);
+65      <font color='#00FF00'>// TODO correct return value</font>
+66      <font color='#0000FF'><b>return</font></b> <font color='#00FFFF'><I>0</I></font>;
+67      
+68  }
+69  <font color='#00FF00'>/**
+ *  @return Zero on any kind of failure, otherwise number of bytes that have been
+ *          read to read point P.
+ *
+ *  @NOTE:  There is no point validation.
+ */</font>
+70  <a href='#PUBLIC'><font color='#0000FF'>PUBLIC</font></a> <a href='#oltype'><font color='#0000FF'>oltype</font></a> <a href='#octet_2_ecp'><font color='#0000FF'>octet_2_ecp</font></a>(<font color='#0000FF'><b>const</font></b> <a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#o'><font color='#0000FF'>o</font></a><b>,</b><a href='#u32'><font color='#0000FF'>u32</font></a> <a name='fsize'><font color='#0000FF'>fsize</font></a><b>,</b><a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><a href='#P'><font color='#0000FF'>P</font></a>)
+71  {
+72      <a name='u8'><font color='#0000FF'>u8</font></a> <a name='flag'><font color='#0000FF'>flag</font></a>;
+73      <a href='#oltype'><font color='#0000FF'>oltype</font></a> <a name='pb'><font color='#0000FF'>pb</font></a> <b>=</b><font color='#00FFFF'><I>0</I></font>;
+74      <font color='#00FF00'>/* TODO errno E_RANGE here */</font>
+75      <font color='#0000FF'><b>if</font></b> (<a href='#o'><font color='#0000FF'>o</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a> <b>&lt;</b>(<a href='#fsize'><font color='#0000FF'>fsize</font></a> <b>+</b><font color='#00FFFF'><I>1</I></font>))<font color='#0000FF'><b>return</font></b> <font color='#00FFFF'><I>0</I></font>;
+76      <a href='#flag'><font color='#0000FF'>flag</font></a> <b>=</b><a href='#o'><font color='#0000FF'>o</font></a><b>-&gt;</b><a href='#val'><font color='#0000FF'>val</font></a>[<a href='#pb'><font color='#0000FF'>pb</font></a><b>+</b><b>+</b>];
+77      <a name='bytes_to_big'><font color='#0000FF'>bytes_to_big</font></a>(<a href='#fsize'><font color='#0000FF'>fsize</font></a><b>,</b><a href='#o'><font color='#0000FF'>o</font></a><b>-&gt;</b><a href='#val'><font color='#0000FF'>val</font></a> <b>+</b><a href='#pb'><font color='#0000FF'>pb</font></a><b>,</b><a href='#P'><font color='#0000FF'>P</font></a><b>-&gt;</b><a href='#X'><font color='#0000FF'>X</font></a>);
+78      <a href='#pb'><font color='#0000FF'>pb</font></a> <b>+=</b><a href='#fsize'><font color='#0000FF'>fsize</font></a>;
+79      <font color='#00FF00'>/* no compression */</font>
+80      <font color='#0000FF'><b>if</font></b> (<a href='#flag'><font color='#0000FF'>flag</font></a> <b>==</b><font color='#00FFFF'><I>0x04</I></font>)
+81      {
+82          <font color='#00FF00'>/* TODO errno E_RANGE here */</font>
+83          <font color='#0000FF'><b>if</font></b> (<a href='#o'><font color='#0000FF'>o</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a> <b>&lt;</b><font color='#00FFFF'><I>2</I></font><b>*</b><a href='#fsize'><font color='#0000FF'>fsize</font></a> <b>+</b><font color='#00FFFF'><I>1</I></font>)<font color='#0000FF'><b>return</font></b> <font color='#00FFFF'><I>0</I></font>;
+84          <a href='#bytes_to_big'><font color='#0000FF'>bytes_to_big</font></a>(<a href='#fsize'><font color='#0000FF'>fsize</font></a><b>,</b><a href='#o'><font color='#0000FF'>o</font></a><b>-&gt;</b><a href='#val'><font color='#0000FF'>val</font></a> <b>+</b><a href='#pb'><font color='#0000FF'>pb</font></a><b>,</b><a href='#P'><font color='#0000FF'>P</font></a><b>-&gt;</b><a href='#Y'><font color='#0000FF'>Y</font></a>);
+85          <a href='#pb'><font color='#0000FF'>pb</font></a> <b>+=</b><a href='#fsize'><font color='#0000FF'>fsize</font></a>;
+86          <a name='epoint_set'><font color='#0000FF'>epoint_set</font></a>(<a href='#P'><font color='#0000FF'>P</font></a><b>-&gt;</b><a href='#X'><font color='#0000FF'>X</font></a><b>,</b><a href='#P'><font color='#0000FF'>P</font></a><b>-&gt;</b><a href='#Y'><font color='#0000FF'>Y</font></a><b>,</b><font color='#00FFFF'><I>0</I></font><b>,</b><a href='#P'><font color='#0000FF'>P</font></a>);
+87          <font color='#0000FF'><b>return</font></b> <a href='#pb'><font color='#0000FF'>pb</font></a>;
+88          <font color='#00FF00'>/* point is compressed */</font>
+89          
+90      }
+91      <font color='#0000FF'><b>else</font></b> <font color='#0000FF'><b>if</font></b> (<a href='#flag'><font color='#0000FF'>flag</font></a> <b>&amp;</b><font color='#00FFFF'><I>0x02</I></font>)
+92      {
+93          <a href='#epoint_set'><font color='#0000FF'>epoint_set</font></a>(<a href='#P'><font color='#0000FF'>P</font></a><b>-&gt;</b><a href='#X'><font color='#0000FF'>X</font></a><b>,</b><a href='#P'><font color='#0000FF'>P</font></a><b>-&gt;</b><a href='#X'><font color='#0000FF'>X</font></a><b>,</b><a href='#flag'><font color='#0000FF'>flag</font></a><b>&amp;</b><font color='#00FFFF'><I>0x01</I></font><b>,</b><a href='#P'><font color='#0000FF'>P</font></a>);
+94          
+95      }
+96      <font color='#0000FF'><b>else</font></b> 
+97      {
+98          <font color='#0000FF'><b>return</font></b> <font color='#00FFFF'><I>0</I></font>;
+99          
+100     }
+101     <font color='#0000FF'><b>return</font></b> <a href='#pb'><font color='#0000FF'>pb</font></a>;
+102     
+103 }
+104 <font color='#0000FF'><b>void</font></b> <a name='init_fake_rng'><font color='#0000FF'>init_fake_rng</font></a>(<a href='#csprng'><font color='#0000FF'>csprng</font></a> <b>*</b><a name='_rng'><font color='#0000FF'>_rng</font></a>)
+105 {
+106     <a href='#u32'><font color='#0000FF'>u32</font></a> <a name='i'><font color='#0000FF'>i</font></a>;
+107     <a href='#u32'><font color='#0000FF'>u32</font></a> <a name='ran'><font color='#0000FF'>ran</font></a>;
+108     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='seed'><font color='#0000FF'>seed</font></a>;
+109     <a name='time'><font color='#0000FF'>time</font></a>((<a name='time_t'><font color='#0000FF'>time_t</font></a> <b>*</b>)<b>&amp;</b><a href='#ran'><font color='#0000FF'>ran</font></a>);
+110     <a name='OCTET_INIT'><font color='#0000FF'>OCTET_INIT</font></a>(<b>&amp;</b><a href='#seed'><font color='#0000FF'>seed</font></a><b>,</b><font color='#00FFFF'><I>100</I></font>);
+111     <a href='#seed'><font color='#0000FF'>seed</font></a><b>.</b><a href='#len'><font color='#0000FF'>len</font></a><b>=</b><font color='#00FFFF'><I>100</I></font>;
+112     <a href='#seed'><font color='#0000FF'>seed</font></a><b>.</b><a href='#val'><font color='#0000FF'>val</font></a>[<font color='#00FFFF'><I>0</I></font>]<b>=</b><a href='#ran'><font color='#0000FF'>ran</font></a>;
+113     <a href='#seed'><font color='#0000FF'>seed</font></a><b>.</b><a href='#val'><font color='#0000FF'>val</font></a>[<font color='#00FFFF'><I>1</I></font>]<b>=</b><a href='#ran'><font color='#0000FF'>ran</font></a><b>&gt;&gt;</b><font color='#00FFFF'><I>8</I></font>;
+114     <a href='#seed'><font color='#0000FF'>seed</font></a><b>.</b><a href='#val'><font color='#0000FF'>val</font></a>[<font color='#00FFFF'><I>2</I></font>]<b>=</b><a href='#ran'><font color='#0000FF'>ran</font></a><b>&gt;&gt;</b><font color='#00FFFF'><I>16</I></font>;
+115     <a href='#seed'><font color='#0000FF'>seed</font></a><b>.</b><a href='#val'><font color='#0000FF'>val</font></a>[<font color='#00FFFF'><I>3</I></font>]<b>=</b><a href='#ran'><font color='#0000FF'>ran</font></a><b>&gt;&gt;</b><font color='#00FFFF'><I>24</I></font>;
+116     <font color='#0000FF'><b>for</font></b> (<a href='#i'><font color='#0000FF'>i</font></a><b>=</b><font color='#00FFFF'><I>4</I></font>; <a href='#i'><font color='#0000FF'>i</font></a><b>&lt;</b><font color='#00FFFF'><I>100</I></font>; <a href='#i'><font color='#0000FF'>i</font></a><b>+</b><b>+</b>)<a href='#seed'><font color='#0000FF'>seed</font></a><b>.</b><a href='#val'><font color='#0000FF'>val</font></a>[<a href='#i'><font color='#0000FF'>i</font></a>]<b>=</b><a href='#i'><font color='#0000FF'>i</font></a><b>+</b><font color='#00FFFF'><I>1</I></font>;
+117     <a name='CREATE_CSPRNG'><font color='#0000FF'>CREATE_CSPRNG</font></a>(<a href='#_rng'><font color='#0000FF'>_rng</font></a><b>,</b><b>&amp;</b><a href='#seed'><font color='#0000FF'>seed</font></a>);
+118     <a name='OCTET_KILL'><font color='#0000FF'>OCTET_KILL</font></a>(<b>&amp;</b><a href='#seed'><font color='#0000FF'>seed</font></a>);
+119     <font color='#0000FF'><b>return</font></b>;
+120     
+121 }
+122 <font color='#0000FF'><b>struct</font></b> <a name='device'><font color='#0000FF'>device</font></a> 
+123 {
+124     <font color='#00FF00'>/* persistent */</font>
+125     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='tau'><font color='#0000FF'>tau</font></a>;
+126     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='v'><font color='#0000FF'>v</font></a>;
+127     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='a'><font color='#0000FF'>a</font></a>;
+128     <font color='#0000FF'><b>struct</font></b> <a name='ecc_pk'><font color='#0000FF'>ecc_pk</font></a> <b>*</b><a name='pk_tau'><font color='#0000FF'>pk_tau</font></a>;
+129     <font color='#00FF00'>/* session */</font>
+130     <a href='#big'><font color='#0000FF'>big</font></a> <a name='k1'><font color='#0000FF'>k1</font></a>;
+131     <a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a name='pin'><font color='#0000FF'>pin</font></a>;
+132     <a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a name='msg'><font color='#0000FF'>msg</font></a>;
+133     
+134 };
+135 <font color='#0000FF'><b>struct</font></b> <a name='server'><font color='#0000FF'>server</font></a> 
+136 {
+137     <font color='#00FF00'>/* persistent */</font>
+138     <font color='#0000FF'><b>struct</font></b> <a name='ecc_sk'><font color='#0000FF'>ecc_sk</font></a> <b>*</b><a name='sk'><font color='#0000FF'>sk</font></a>;
+139     
+140 };
+141 <font color='#0000FF'><b>struct</font></b> <a name='public'><font color='#0000FF'>public</font></a> 
+142 {
+143     <font color='#0000FF'><b>struct</font></b> <a name='ecc_dom'><font color='#0000FF'>ecc_dom</font></a> <b>*</b><a name='dom'><font color='#0000FF'>dom</font></a>;
+144     <font color='#0000FF'><b>struct</font></b> <a href='#ecc_pk'><font color='#0000FF'>ecc_pk</font></a> <b>*</b><a name='pk_foo'><font color='#0000FF'>pk_foo</font></a>;
+145     <font color='#0000FF'><b>struct</font></b> <a href='#ecc_pk'><font color='#0000FF'>ecc_pk</font></a> <b>*</b><a name='pk_srv'><font color='#0000FF'>pk_srv</font></a>;
+146     
+147 };
+148 <font color='#0000FF'><b>struct</font></b> <a href='#server'><font color='#0000FF'>server</font></a> <a name='srv'><font color='#0000FF'>srv</font></a>;
+149 <font color='#0000FF'><b>struct</font></b> <a href='#device'><font color='#0000FF'>device</font></a> <a name='dvc'><font color='#0000FF'>dvc</font></a>;
+150 <font color='#0000FF'><b>struct</font></b> <a href='#public'><font color='#0000FF'>public</font></a> <a name='pub'><font color='#0000FF'>pub</font></a>;
+151 <font color='#00FF00'>/**
+ *  Dummy pseudorandom function
+ */</font>
+152 <a href='#PUBLIC'><font color='#0000FF'>PUBLIC</font></a> <a name='err_t'><font color='#0000FF'>err_t</font></a> <a name='f'><font color='#0000FF'>f</font></a>(<font color='#0000FF'><b>const</font></b> <a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a name='key'><font color='#0000FF'>key</font></a><b>,</b><font color='#0000FF'><b>const</font></b> <a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a name='input'><font color='#0000FF'>input</font></a><b>,</b><a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a name='out'><font color='#0000FF'>out</font></a>)
+153 {
+154     <font color='#0000FF'><b>char</font></b> <a name='h'><font color='#0000FF'>h</font></a>[<font color='#00FFFF'><I>32</I></font>];
+155     <a name='sha256'><font color='#0000FF'>sha256</font></a> <a name='sh'><font color='#0000FF'>sh</font></a>;
+156     <a name='shs256_init'><font color='#0000FF'>shs256_init</font></a>(<b>&amp;</b><a href='#sh'><font color='#0000FF'>sh</font></a>);
+157     <a href='#oltype'><font color='#0000FF'>oltype</font></a> <a href='#i'><font color='#0000FF'>i</font></a>;
+158     <font color='#0000FF'><b>for</font></b> (<a href='#i'><font color='#0000FF'>i</font></a> <b>=</b><font color='#00FFFF'><I>0</I></font>; <a href='#i'><font color='#0000FF'>i</font></a> <b>&lt;</b><a href='#key'><font color='#0000FF'>key</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a>; <a href='#i'><font color='#0000FF'>i</font></a><b>+</b><b>+</b>)<a name='shs256_process'><font color='#0000FF'>shs256_process</font></a>(<b>&amp;</b><a href='#sh'><font color='#0000FF'>sh</font></a><b>,</b><a href='#key'><font color='#0000FF'>key</font></a><b>-&gt;</b><a href='#val'><font color='#0000FF'>val</font></a>[<a href='#i'><font color='#0000FF'>i</font></a>]);
+159     <font color='#0000FF'><b>for</font></b> (<a href='#i'><font color='#0000FF'>i</font></a> <b>=</b><font color='#00FFFF'><I>0</I></font>; <a href='#i'><font color='#0000FF'>i</font></a> <b>&lt;</b><a href='#input'><font color='#0000FF'>input</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a>; <a href='#i'><font color='#0000FF'>i</font></a><b>+</b><b>+</b>)<a href='#shs256_process'><font color='#0000FF'>shs256_process</font></a>(<b>&amp;</b><a href='#sh'><font color='#0000FF'>sh</font></a><b>,</b><a href='#input'><font color='#0000FF'>input</font></a><b>-&gt;</b><a href='#val'><font color='#0000FF'>val</font></a>[<a href='#i'><font color='#0000FF'>i</font></a>]);
+160     <a name='shs256_hash'><font color='#0000FF'>shs256_hash</font></a>(<b>&amp;</b><a href='#sh'><font color='#0000FF'>sh</font></a><b>,</b><a href='#h'><font color='#0000FF'>h</font></a>);
+161     <font color='#00FF00'>// XXX side effect</font>
+162     <a name='OCTET_EMPTY'><font color='#0000FF'>OCTET_EMPTY</font></a>(<a href='#out'><font color='#0000FF'>out</font></a>);
+163     <font color='#00FF00'>// FIXME fill output up to its maximum: out-&gt;max</font>
+164     <a name='OCTET_JOIN_BYTES'><font color='#0000FF'>OCTET_JOIN_BYTES</font></a>(<a href='#h'><font color='#0000FF'>h</font></a><b>,</b><a name='MIN'><font color='#0000FF'>MIN</font></a>(<font color='#0000FF'><b>sizeof</font></b>(<a href='#h'><font color='#0000FF'>h</font></a>)<b>,</b><a href='#out'><font color='#0000FF'>out</font></a><b>-&gt;</b><a name='max'><font color='#0000FF'>max</font></a>)<b>,</b><a href='#out'><font color='#0000FF'>out</font></a>);
+165     <font color='#0000FF'><b>return</font></b> <a name='E_GOOD'><font color='#0000FF'>E_GOOD</font></a>;
+166     
+167 }
+168 <font color='#00FF00'>/**
+ *  KDF: NIST SP 800-56A
+ *
+ *  run: key &lt;&lt; hash(round || input {|| other}) until key has been filled.
+ */</font>
+169 <a href='#PRIVATE'><font color='#0000FF'>PRIVATE</font></a> <a href='#err_t'><font color='#0000FF'>err_t</font></a> <a name='kdf'><font color='#0000FF'>kdf</font></a>(<font color='#0000FF'><b>const</font></b> <a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#input'><font color='#0000FF'>input</font></a><b>,</b><font color='#0000FF'><b>const</font></b> <a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a name='other'><font color='#0000FF'>other</font></a><b>,</b><a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#key'><font color='#0000FF'>key</font></a>)
+170 {
+171     <font color='#0000FF'><b>char</font></b> <a href='#h'><font color='#0000FF'>h</font></a>[<font color='#00FFFF'><I>32</I></font>];
+172     <font color='#0000FF'><b>const</font></b> <font color='#0000FF'><b>unsigned</font></b> <font color='#0000FF'><b>char</font></b> <b>*</b><a name='c'><font color='#0000FF'>c</font></a>;
+173     <a href='#sha256'><font color='#0000FF'>sha256</font></a> <a href='#sh'><font color='#0000FF'>sh</font></a>;
+174     <font color='#0000FF'><b>int</font></b> <a href='#i'><font color='#0000FF'>i</font></a>;
+175     <a href='#u32'><font color='#0000FF'>u32</font></a> <a name='cnt'><font color='#0000FF'>cnt</font></a>;
+176     <font color='#0000FF'><b>for</font></b> (<a href='#cnt'><font color='#0000FF'>cnt</font></a> <b>=</b><font color='#00FFFF'><I>0x01</I></font>; <a name='octet_bytes_left'><font color='#0000FF'>octet_bytes_left</font></a>(<a href='#key'><font color='#0000FF'>key</font></a>); <a href='#cnt'><font color='#0000FF'>cnt</font></a><b>+</b><b>+</b>)
+177     {
+178         <a href='#shs256_init'><font color='#0000FF'>shs256_init</font></a>(<b>&amp;</b><a href='#sh'><font color='#0000FF'>sh</font></a>);
+179         <font color='#0000FF'><b>for</font></b> (<a href='#i'><font color='#0000FF'>i</font></a> <b>=</b><font color='#00FFFF'><I>3</I></font>; (<font color='#0000FF'><b>int</font></b>)<a href='#i'><font color='#0000FF'>i</font></a> <b>&gt;=</b><font color='#00FFFF'><I>0</I></font>; <a href='#i'><font color='#0000FF'>i</font></a><b>-</b><b>-</b>)<a href='#shs256_process'><font color='#0000FF'>shs256_process</font></a>(<b>&amp;</b><a href='#sh'><font color='#0000FF'>sh</font></a><b>,</b>(<a href='#cnt'><font color='#0000FF'>cnt</font></a> <b>&gt;&gt;</b><a href='#i'><font color='#0000FF'>i</font></a>));
+180         <a name='octet_each'><font color='#0000FF'>octet_each</font></a>(<a href='#input'><font color='#0000FF'>input</font></a><b>,</b><a href='#c'><font color='#0000FF'>c</font></a>)<a href='#shs256_process'><font color='#0000FF'>shs256_process</font></a>(<b>&amp;</b><a href='#sh'><font color='#0000FF'>sh</font></a><b>,</b><b>*</b><a href='#c'><font color='#0000FF'>c</font></a>);
+181         <font color='#0000FF'><b>if</font></b> (<a href='#other'><font color='#0000FF'>other</font></a>)<a href='#octet_each'><font color='#0000FF'>octet_each</font></a>(<a href='#other'><font color='#0000FF'>other</font></a><b>,</b><a href='#c'><font color='#0000FF'>c</font></a>)<a href='#shs256_process'><font color='#0000FF'>shs256_process</font></a>(<b>&amp;</b><a href='#sh'><font color='#0000FF'>sh</font></a><b>,</b><b>*</b><a href='#c'><font color='#0000FF'>c</font></a>);
+182         <a href='#shs256_hash'><font color='#0000FF'>shs256_hash</font></a>(<b>&amp;</b><a href='#sh'><font color='#0000FF'>sh</font></a><b>,</b><a href='#h'><font color='#0000FF'>h</font></a>);
+183         <a name='octet_append'><font color='#0000FF'>octet_append</font></a>(<a href='#key'><font color='#0000FF'>key</font></a><b>,</b><a href='#h'><font color='#0000FF'>h</font></a><b>,</b><font color='#00FFFF'><I>32</I></font>);
+184         
+185     }
+186     <font color='#0000FF'><b>return</font></b> <a href='#E_GOOD'><font color='#0000FF'>E_GOOD</font></a>;
+187     
+188 }
+189 <font color='#00FF00'>/** Encrypt message m using ECIES.
+ *
+ *  What do we here?
+ *
+ *  1)  r &lt;- random(0,n-1)
+ *  2)  R &lt;- r G         (with G = Generator of E)
+ *  3)  S &lt;- r Y         (with Y = ECC public key)
+ *  4)  k1||k2 &lt;- KDF(x(S))
+ *  5)  c1 &lt;- aes_enc(k1, m)
+ *  6)  c2 &lt;- HMAC(k2, c1)
+ *
+ *  write output
+ *  7)  c &lt;&lt; R || c1 || c2
+ */</font>
+190 <a href='#PUBLIC'><font color='#0000FF'>PUBLIC</font></a> <a href='#err_t'><font color='#0000FF'>err_t</font></a> <a name='ecies_enc'><font color='#0000FF'>ecies_enc</font></a>(<font color='#0000FF'><b>const</font></b> <font color='#0000FF'><b>struct</font></b> <a href='#ecc_dom'><font color='#0000FF'>ecc_dom</font></a> <b>*</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>,</b><font color='#0000FF'><b>const</font></b> <font color='#0000FF'><b>struct</font></b> <a href='#ecc_pk'><font color='#0000FF'>ecc_pk</font></a> <b>*</b><a name='pk'><font color='#0000FF'>pk</font></a><b>,</b><font color='#0000FF'><b>const</font></b> <a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#m'><font color='#0000FF'>m</font></a><b>,</b><a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#c'><font color='#0000FF'>c</font></a>)
+191 {
+192     <font color='#0000FF'><b>char</font></b> <a name='mmb'><font color='#0000FF'>mmb</font></a>[<a name='MR_BIG_RESERVE'><font color='#0000FF'>MR_BIG_RESERVE</font></a>(<font color='#00FFFF'><I>1</I></font>)]<b>=</b>
+193     {
+194         <font color='#00FFFF'><I>0</I></font>
+195     };
+196     <font color='#0000FF'><b>char</font></b> <a name='mmp'><font color='#0000FF'>mmp</font></a>[<a name='MR_ECP_RESERVE'><font color='#0000FF'>MR_ECP_RESERVE</font></a>(<font color='#00FFFF'><I>1</I></font>)]<b>=</b>
+197     {
+198         <font color='#00FFFF'><I>0</I></font>
+199     };
+200     <a href='#aes'><font color='#0000FF'>aes</font></a> <a href='#ae'><font color='#0000FF'>ae</font></a>;
+201     <a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><a name='R'><font color='#0000FF'>R</font></a>;
+202     <a href='#big'><font color='#0000FF'>big</font></a> <a name='r'><font color='#0000FF'>r</font></a>;
+203     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='s'><font color='#0000FF'>s</font></a>;
+204     <font color='#00FF00'>/* holds serialized shared key */</font>
+205     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='e'><font color='#0000FF'>e</font></a>;
+206     <font color='#00FF00'>/* opaque octet on cipher text area for encrypted message */</font>
+207     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='mac'><font color='#0000FF'>mac</font></a>;
+208     <font color='#00FF00'>/* opaque octet on cipher text area for HMAC */</font>
+209     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='k'><font color='#0000FF'>k</font></a>;
+210     <font color='#00FF00'>/* key derived from s by: k = KDF(s) */</font>
+211     <font color='#00FF00'>// FIXME check available bytes in output octet 'c'</font>
+212     <font color='#00FF00'>// return E_RANGE</font>
+213     <font color='#00FF00'>// length \approx [2*]&lt;fsize&gt;+1 + &lt;msg-length&gt; + &lt;hash_length&gt;</font>
+214     <font color='#00FF00'>// e.g. for EC 256bit and SHA256 without point compression</font>
+215     <font color='#00FF00'>// length = 65 + msg + 32</font>
+216     <font color='#00FF00'>/* actually an ephemeral key generation. Should we use ecc_gen instead? */</font>
+217     <a href='#r'><font color='#0000FF'>r</font></a> <b>=</b><a name='mirvar_mem'><font color='#0000FF'>mirvar_mem</font></a>(<a href='#mmb'><font color='#0000FF'>mmb</font></a><b>,</b><font color='#00FFFF'><I>0</I></font>);
+218     <a href='#R'><font color='#0000FF'>R</font></a> <b>=</b><a name='epoint_init_mem'><font color='#0000FF'>epoint_init_mem</font></a>(<a href='#mmp'><font color='#0000FF'>mmp</font></a><b>,</b><font color='#00FFFF'><I>0</I></font>);
+219     <a name='bigrand'><font color='#0000FF'>bigrand</font></a>(<a href='#dom'><font color='#0000FF'>dom</font></a><b>-&gt;</b><a name='n'><font color='#0000FF'>n</font></a><b>,</b><a href='#r'><font color='#0000FF'>r</font></a>);
+220     <a name='ecurve_mult'><font color='#0000FF'>ecurve_mult</font></a>(<a href='#r'><font color='#0000FF'>r</font></a><b>,</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>-&gt;</b><a name='G'><font color='#0000FF'>G</font></a><b>,</b><a href='#R'><font color='#0000FF'>R</font></a>);
+221     <a name='epoint_norm'><font color='#0000FF'>epoint_norm</font></a>(<a href='#R'><font color='#0000FF'>R</font></a>);
+222     <font color='#00FF00'>/* Key pair ready: &lt;r, R&gt; */</font>
+223     <font color='#00FF00'>/* write point to cipher text. so we can reuse its memory */</font>
+224     <a href='#octet_put_epoint'><font color='#0000FF'>octet_put_epoint</font></a>(<a href='#c'><font color='#0000FF'>c</font></a><b>,</b><a href='#R'><font color='#0000FF'>R</font></a>);
+225     <font color='#00FF00'>/* calculate a shared key (ECDH-Key-Exchange) */</font>
+226     <a href='#ecurve_mult'><font color='#0000FF'>ecurve_mult</font></a>(<a href='#r'><font color='#0000FF'>r</font></a><b>,</b><a href='#pk'><font color='#0000FF'>pk</font></a><b>-&gt;</b><a name='Q'><font color='#0000FF'>Q</font></a><b>,</b><a href='#R'><font color='#0000FF'>R</font></a>);
+227     <a href='#epoint_norm'><font color='#0000FF'>epoint_norm</font></a>(<a href='#R'><font color='#0000FF'>R</font></a>);
+228     <font color='#00FF00'>/* big is no longer needed. */</font>
+229     <a href='#r'><font color='#0000FF'>r</font></a> <b>=</b><a name='NULL'><font color='#0000FF'>NULL</font></a>;
+230     <a name='memset'><font color='#0000FF'>memset</font></a>(<a href='#mmb'><font color='#0000FF'>mmb</font></a><b>,</b><font color='#00FFFF'><I>0x00</I></font><b>,</b><font color='#0000FF'><b>sizeof</font></b>(<a href='#mmb'><font color='#0000FF'>mmb</font></a>));
+231     <a name='OCTET_INIT_FROM_ARRAY'><font color='#0000FF'>OCTET_INIT_FROM_ARRAY</font></a>(<b>&amp;</b><a href='#s'><font color='#0000FF'>s</font></a><b>,</b><font color='#00FFFF'><I>32</I></font><b>,</b><a href='#mmb'><font color='#0000FF'>mmb</font></a>);
+232     <a href='#OCTET_INIT_FROM_ARRAY'><font color='#0000FF'>OCTET_INIT_FROM_ARRAY</font></a>(<b>&amp;</b><a href='#k'><font color='#0000FF'>k</font></a><b>,</b><font color='#00FFFF'><I>64</I></font><b>,</b><a href='#mmp'><font color='#0000FF'>mmp</font></a>);
+233     <a href='#s'><font color='#0000FF'>s</font></a><b>.</b><a href='#len'><font color='#0000FF'>len</font></a> <b>=</b><a href='#big_to_bytes'><font color='#0000FF'>big_to_bytes</font></a>(<font color='#00FFFF'><I>32</I></font><b>,</b><a href='#R'><font color='#0000FF'>R</font></a><b>-&gt;</b><a href='#X'><font color='#0000FF'>X</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a><b>.</b><a href='#val'><font color='#0000FF'>val</font></a><b>,</b><a href='#TRUE'><font color='#0000FF'>TRUE</font></a>);
+234     <a href='#memset'><font color='#0000FF'>memset</font></a>(<a href='#mmp'><font color='#0000FF'>mmp</font></a><b>,</b><font color='#00FFFF'><I>0x00</I></font><b>,</b><font color='#0000FF'><b>sizeof</font></b>(<a href='#mmp'><font color='#0000FF'>mmp</font></a>));
+235     <a href='#kdf'><font color='#0000FF'>kdf</font></a>(<b>&amp;</b><a href='#s'><font color='#0000FF'>s</font></a><b>,</b><a href='#NULL'><font color='#0000FF'>NULL</font></a><b>,</b><b>&amp;</b><a href='#k'><font color='#0000FF'>k</font></a>);
+236     <font color='#00FF00'>// XXX review MODE decision</font>
+237     <a name='aes_init'><font color='#0000FF'>aes_init</font></a>(<b>&amp;</b><a href='#ae'><font color='#0000FF'>ae</font></a><b>,</b><a name='MR_ECB'><font color='#0000FF'>MR_ECB</font></a><b>,</b><font color='#00FFFF'><I>32</I></font><b>,</b><a href='#k'><font color='#0000FF'>k</font></a><b>.</b><a href='#val'><font color='#0000FF'>val</font></a><b>,</b><a href='#NULL'><font color='#0000FF'>NULL</font></a>);
+238     <font color='#0000FF'><b>if</font></b> (<a href='#m'><font color='#0000FF'>m</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a> <b>%</b><a href='#AES_BLKSZ'><font color='#0000FF'>AES_BLKSZ</font></a>)<font color='#0000FF'><b>return</font></b> <a name='E_BAD_PARAM'><font color='#0000FF'>E_BAD_PARAM</font></a>;
+239     <font color='#00FF00'>// XXX too much Voodoo?</font>
+240     <font color='#00FF00'>/* create some opaque objects on cipher text octet */</font>
+241     <a href='#OCTET_INIT_FROM_ARRAY'><font color='#0000FF'>OCTET_INIT_FROM_ARRAY</font></a>(<b>&amp;</b><a href='#e'><font color='#0000FF'>e</font></a><b>,</b><a href='#m'><font color='#0000FF'>m</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a><b>,</b><a href='#octet_end'><font color='#0000FF'>octet_end</font></a>(<a href='#c'><font color='#0000FF'>c</font></a>));
+242     <a href='#OCTET_INIT_FROM_ARRAY'><font color='#0000FF'>OCTET_INIT_FROM_ARRAY</font></a>(<b>&amp;</b><a href='#mac'><font color='#0000FF'>mac</font></a><b>,</b><font color='#00FFFF'><I>32</I></font><b>,</b><a href='#octet_end'><font color='#0000FF'>octet_end</font></a>(<a href='#c'><font color='#0000FF'>c</font></a>)<b>+</b><a href='#m'><font color='#0000FF'>m</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a>);
+243     <a href='#octet_append'><font color='#0000FF'>octet_append</font></a>(<b>&amp;</b><a href='#e'><font color='#0000FF'>e</font></a><b>,</b><a href='#m'><font color='#0000FF'>m</font></a><b>-&gt;</b><a href='#val'><font color='#0000FF'>val</font></a><b>,</b><a href='#m'><font color='#0000FF'>m</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a>);
+244     <a href='#aes_encrypt_all'><font color='#0000FF'>aes_encrypt_all</font></a>(<b>&amp;</b><a href='#ae'><font color='#0000FF'>ae</font></a><b>,</b><a href='#e'><font color='#0000FF'>e</font></a><b>.</b><a href='#val'><font color='#0000FF'>val</font></a><b>,</b><a href='#e'><font color='#0000FF'>e</font></a><b>.</b><a href='#len'><font color='#0000FF'>len</font></a>);
+245     <a href='#c'><font color='#0000FF'>c</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a> <b>+=</b><a href='#e'><font color='#0000FF'>e</font></a><b>.</b><a href='#len'><font color='#0000FF'>len</font></a>;
+246     <a href='#k'><font color='#0000FF'>k</font></a><b>.</b><a href='#val'><font color='#0000FF'>val</font></a> <b>+=</b><a href='#k'><font color='#0000FF'>k</font></a><b>.</b><a href='#len'><font color='#0000FF'>len</font></a>;
+247     <font color='#00FF00'>// MAC1(&amp;e, NULL, &amp;k, mac.max, SHA256, &amp;mac);</font>
+248     <a href='#c'><font color='#0000FF'>c</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a> <b>+=</b><a href='#mac'><font color='#0000FF'>mac</font></a><b>.</b><a href='#len'><font color='#0000FF'>len</font></a>;
+249     <font color='#00FF00'>// TODO aes_end(...)</font>
+250     <font color='#0000FF'><b>return</font></b> <a href='#E_GOOD'><font color='#0000FF'>E_GOOD</font></a>;
+251     
+252 }
+253 <a href='#PUBLIC'><font color='#0000FF'>PUBLIC</font></a> <a href='#err_t'><font color='#0000FF'>err_t</font></a> <a name='ecies_dec'><font color='#0000FF'>ecies_dec</font></a>(<font color='#0000FF'><b>const</font></b> <font color='#0000FF'><b>struct</font></b> <a href='#ecc_dom'><font color='#0000FF'>ecc_dom</font></a> <b>*</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>,</b><font color='#0000FF'><b>const</font></b> <font color='#0000FF'><b>struct</font></b> <a href='#ecc_sk'><font color='#0000FF'>ecc_sk</font></a> <b>*</b><a href='#sk'><font color='#0000FF'>sk</font></a><b>,</b><font color='#0000FF'><b>const</font></b> <a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#c'><font color='#0000FF'>c</font></a><b>,</b><a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#m'><font color='#0000FF'>m</font></a>)
+254 {
+255     <font color='#0000FF'><b>char</font></b> <a href='#mmp'><font color='#0000FF'>mmp</font></a>[<a href='#MR_ECP_RESERVE'><font color='#0000FF'>MR_ECP_RESERVE</font></a>(<font color='#00FFFF'><I>1</I></font>)]<b>=</b>
+256     {
+257         <font color='#00FFFF'><I>0</I></font>
+258     };
+259     <font color='#0000FF'><b>char</font></b> <a name='__buff'><font color='#0000FF'>__buff</font></a>[<font color='#00FFFF'><I>32</I></font>];
+260     <font color='#00FF00'>// used twice: octet string of shared key 's' and hash of cipher text</font>
+261     <font color='#0000FF'><b>char</font></b> <b>*</b><a name='emsg'><font color='#0000FF'>emsg</font></a>;
+262     <a href='#aes'><font color='#0000FF'>aes</font></a> <a href='#ae'><font color='#0000FF'>ae</font></a>;
+263     <a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><a href='#R'><font color='#0000FF'>R</font></a>;
+264     <a href='#octet'><font color='#0000FF'>octet</font></a> <a href='#mac'><font color='#0000FF'>mac</font></a>;
+265     <a href='#octet'><font color='#0000FF'>octet</font></a> <a href='#s'><font color='#0000FF'>s</font></a>;
+266     <a href='#octet'><font color='#0000FF'>octet</font></a> <a href='#k'><font color='#0000FF'>k</font></a>;
+267     <a href='#oltype'><font color='#0000FF'>oltype</font></a> <a href='#i'><font color='#0000FF'>i</font></a>;
+268     <a href='#oltype'><font color='#0000FF'>oltype</font></a> <a name='plen'><font color='#0000FF'>plen</font></a>;
+269     <a href='#oltype'><font color='#0000FF'>oltype</font></a> <a name='mlen'><font color='#0000FF'>mlen</font></a>;
+270     <a href='#R'><font color='#0000FF'>R</font></a> <b>=</b><a href='#epoint_init_mem'><font color='#0000FF'>epoint_init_mem</font></a>(<a href='#mmp'><font color='#0000FF'>mmp</font></a><b>,</b><font color='#00FFFF'><I>0</I></font>);
+271     <a href='#OCTET_INIT_FROM_ARRAY'><font color='#0000FF'>OCTET_INIT_FROM_ARRAY</font></a>(<b>&amp;</b><a href='#s'><font color='#0000FF'>s</font></a><b>,</b><font color='#00FFFF'><I>32</I></font><b>,</b><a href='#__buff'><font color='#0000FF'>__buff</font></a>);
+272     <a href='#OCTET_INIT_FROM_ARRAY'><font color='#0000FF'>OCTET_INIT_FROM_ARRAY</font></a>(<b>&amp;</b><a href='#k'><font color='#0000FF'>k</font></a><b>,</b><font color='#00FFFF'><I>64</I></font><b>,</b><a href='#mmp'><font color='#0000FF'>mmp</font></a>);
+273     <font color='#00FF00'>/* read point from cipher text */</font>
+274     <a href='#plen'><font color='#0000FF'>plen</font></a> <b>=</b><a href='#octet_2_ecp'><font color='#0000FF'>octet_2_ecp</font></a>(<a href='#c'><font color='#0000FF'>c</font></a><b>,</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>-&gt;</b><a href='#fsize'><font color='#0000FF'>fsize</font></a><b>,</b><a href='#R'><font color='#0000FF'>R</font></a>);
+275     <font color='#0000FF'><b>if</font></b> (<b>!</b><a href='#plen'><font color='#0000FF'>plen</font></a>)<font color='#0000FF'><b>return</font></b> <a href='#E_BAD_PARAM'><font color='#0000FF'>E_BAD_PARAM</font></a>;
+276     <font color='#0000FF'><b>if</font></b> (<a name='point_at_infinity'><font color='#0000FF'>point_at_infinity</font></a>(<a href='#R'><font color='#0000FF'>R</font></a>))<font color='#0000FF'><b>return</font></b> <a name='E_FAILED'><font color='#0000FF'>E_FAILED</font></a>;
+277     <a href='#ecurve_mult'><font color='#0000FF'>ecurve_mult</font></a>(<a href='#sk'><font color='#0000FF'>sk</font></a><b>-&gt;</b><a name='x'><font color='#0000FF'>x</font></a><b>,</b><a href='#R'><font color='#0000FF'>R</font></a><b>,</b><a href='#R'><font color='#0000FF'>R</font></a>);
+278     <a href='#epoint_norm'><font color='#0000FF'>epoint_norm</font></a>(<a href='#R'><font color='#0000FF'>R</font></a>);
+279     <a href='#s'><font color='#0000FF'>s</font></a><b>.</b><a href='#len'><font color='#0000FF'>len</font></a> <b>=</b><a href='#big_to_bytes'><font color='#0000FF'>big_to_bytes</font></a>(<font color='#00FFFF'><I>32</I></font><b>,</b><a href='#R'><font color='#0000FF'>R</font></a><b>-&gt;</b><a href='#X'><font color='#0000FF'>X</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a><b>.</b><a href='#val'><font color='#0000FF'>val</font></a><b>,</b><a href='#TRUE'><font color='#0000FF'>TRUE</font></a>);
+280     <a href='#kdf'><font color='#0000FF'>kdf</font></a>(<b>&amp;</b><a href='#s'><font color='#0000FF'>s</font></a><b>,</b><a href='#NULL'><font color='#0000FF'>NULL</font></a><b>,</b><b>&amp;</b><a href='#k'><font color='#0000FF'>k</font></a>);
+281     <a href='#aes_init'><font color='#0000FF'>aes_init</font></a>(<b>&amp;</b><a href='#ae'><font color='#0000FF'>ae</font></a><b>,</b><a href='#MR_ECB'><font color='#0000FF'>MR_ECB</font></a><b>,</b><font color='#00FFFF'><I>32</I></font><b>,</b><a href='#k'><font color='#0000FF'>k</font></a><b>.</b><a href='#val'><font color='#0000FF'>val</font></a><b>,</b><a href='#NULL'><font color='#0000FF'>NULL</font></a>);
+282     <font color='#00FF00'>// XXX magic number: 32 == HASH_SIZE</font>
+283     <a href='#mlen'><font color='#0000FF'>mlen</font></a> <b>=</b><a href='#c'><font color='#0000FF'>c</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a> <b>-</b><a href='#plen'><font color='#0000FF'>plen</font></a> <b>-</b><font color='#00FFFF'><I>32</I></font>;
+284     <a href='#emsg'><font color='#0000FF'>emsg</font></a> <b>=</b><a href='#octet_end'><font color='#0000FF'>octet_end</font></a>(<a href='#m'><font color='#0000FF'>m</font></a>);
+285     <a href='#octet_append'><font color='#0000FF'>octet_append</font></a>(<a href='#m'><font color='#0000FF'>m</font></a><b>,</b><a href='#c'><font color='#0000FF'>c</font></a><b>-&gt;</b><a href='#val'><font color='#0000FF'>val</font></a> <b>+</b><a href='#plen'><font color='#0000FF'>plen</font></a><b>,</b><a href='#mlen'><font color='#0000FF'>mlen</font></a>);
+286     <a href='#aes_decrypt_all'><font color='#0000FF'>aes_decrypt_all</font></a>(<b>&amp;</b><a href='#ae'><font color='#0000FF'>ae</font></a><b>,</b><a href='#emsg'><font color='#0000FF'>emsg</font></a><b>,</b><a href='#mlen'><font color='#0000FF'>mlen</font></a>);
+287     <font color='#0000FF'><b>return</font></b> <a href='#E_GOOD'><font color='#0000FF'>E_GOOD</font></a>;
+288     
+289 }
+290 <font color='#00FF00'>/* XXX better name */</font>
+291 <a href='#PRIVATE'><font color='#0000FF'>PRIVATE</font></a> <a href='#err_t'><font color='#0000FF'>err_t</font></a> <a name='sha256_append'><font color='#0000FF'>sha256_append</font></a>(<font color='#0000FF'><b>const</font></b> <a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a name='str'><font color='#0000FF'>str</font></a><b>,</b><a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a name='buff'><font color='#0000FF'>buff</font></a>)
+292 {
+293     <font color='#0000FF'><b>char</font></b> <a name='hh'><font color='#0000FF'>hh</font></a>[<a name='MAX_HASH_BYTES'><font color='#0000FF'>MAX_HASH_BYTES</font></a>];
+294     <a href='#sha256'><font color='#0000FF'>sha256</font></a> <a href='#sh'><font color='#0000FF'>sh</font></a>;
+295     <a href='#u32'><font color='#0000FF'>u32</font></a> <a href='#i'><font color='#0000FF'>i</font></a>;
+296     <font color='#0000FF'><b>if</font></b> (<a href='#buff'><font color='#0000FF'>buff</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a> <b>+</b><font color='#00FFFF'><I>32</I></font><b>&gt;</b><a href='#buff'><font color='#0000FF'>buff</font></a><b>-&gt;</b><a href='#max'><font color='#0000FF'>max</font></a>)<font color='#0000FF'><b>return</font></b> <a name='E_RANGE'><font color='#0000FF'>E_RANGE</font></a>;
+297     <a href='#shs256_init'><font color='#0000FF'>shs256_init</font></a>(<b>&amp;</b><a href='#sh'><font color='#0000FF'>sh</font></a>);
+298     <font color='#0000FF'><b>for</font></b> (<a href='#i'><font color='#0000FF'>i</font></a> <b>=</b><font color='#00FFFF'><I>0</I></font>; <a href='#i'><font color='#0000FF'>i</font></a> <b>&lt;</b><a href='#str'><font color='#0000FF'>str</font></a><b>-&gt;</b><a href='#len'><font color='#0000FF'>len</font></a>; <a href='#i'><font color='#0000FF'>i</font></a><b>+</b><b>+</b>)<a href='#shs256_process'><font color='#0000FF'>shs256_process</font></a>(<b>&amp;</b><a href='#sh'><font color='#0000FF'>sh</font></a><b>,</b><a href='#str'><font color='#0000FF'>str</font></a><b>-&gt;</b><a href='#val'><font color='#0000FF'>val</font></a>[<a href='#i'><font color='#0000FF'>i</font></a>]);
+299     <a href='#shs256_hash'><font color='#0000FF'>shs256_hash</font></a>(<b>&amp;</b><a href='#sh'><font color='#0000FF'>sh</font></a><b>,</b><a href='#hh'><font color='#0000FF'>hh</font></a>);
+300     <a href='#OCTET_JOIN_BYTES'><font color='#0000FF'>OCTET_JOIN_BYTES</font></a>(<a href='#hh'><font color='#0000FF'>hh</font></a><b>,</b><font color='#00FFFF'><I>32</I></font><b>,</b><a href='#buff'><font color='#0000FF'>buff</font></a>);
+301     <font color='#0000FF'><b>return</font></b> <a href='#E_GOOD'><font color='#0000FF'>E_GOOD</font></a>;
+302     
+303 }
+304 <font color='#FF00FF'><b>#define SIZE_TAU</b></font>
+305 <a href='#PUBLIC'><font color='#0000FF'>PUBLIC</font></a> <a href='#err_t'><font color='#0000FF'>err_t</font></a> <a name='ecsign_init'><font color='#0000FF'>ecsign_init</font></a>(<font color='#0000FF'><b>const</font></b> <font color='#0000FF'><b>struct</font></b> <a href='#ecc_dom'><font color='#0000FF'>ecc_dom</font></a> <b>*</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>,</b><font color='#0000FF'><b>const</font></b> <font color='#0000FF'><b>struct</font></b> <a href='#ecc_pk'><font color='#0000FF'>ecc_pk</font></a> <b>*</b><a href='#pk_srv'><font color='#0000FF'>pk_srv</font></a><b>,</b><font color='#0000FF'><b>const</font></b> <a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#pin'><font color='#0000FF'>pin</font></a><b>,</b><a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#a'><font color='#0000FF'>a</font></a><b>,</b><a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#v'><font color='#0000FF'>v</font></a><b>,</b><a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a name='t'><font color='#0000FF'>t</font></a><b>,</b><a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#tau'><font color='#0000FF'>tau</font></a><b>,</b><font color='#0000FF'><b>struct</font></b> <a href='#ecc_pk'><font color='#0000FF'>ecc_pk</font></a> <b>*</b><a href='#pk'><font color='#0000FF'>pk</font></a><b>,</b><font color='#0000FF'><b>struct</font></b> <a href='#ecc_pk'><font color='#0000FF'>ecc_pk</font></a> <b>*</b><a href='#pk_tau'><font color='#0000FF'>pk_tau</font></a>)
+306 {
+307     <font color='#FF00FF'><b>#define TICKET_SIZE 4*32</b></font>
+308     <font color='#0000FF'><b>char</font></b> <a name='__mem'><font color='#0000FF'>__mem</font></a>[<a name='TICKET_SIZE'><font color='#0000FF'>TICKET_SIZE</font></a>];
+309     <font color='#0000FF'><b>struct</font></b> <a href='#ecc_sk'><font color='#0000FF'>ecc_sk</font></a> <a href='#sk'><font color='#0000FF'>sk</font></a>;
+310     <font color='#00FF00'>/* put a union around shared stack memory */</font>
+311     <font color='#0000FF'><b>union</font></b> 
+312     {
+313         <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='ticket'><font color='#0000FF'>ticket</font></a>;
+314         <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='sk_raw'><font color='#0000FF'>sk_raw</font></a>;
+315         
+316     }
+317     <a name='tmp'><font color='#0000FF'>tmp</font></a> <b>=</b>
+318     {
+319         <b>.</b><a href='#ticket'><font color='#0000FF'>ticket</font></a> <b>=</b><a name='Octet'><font color='#0000FF'>Octet</font></a>(<a href='#__mem'><font color='#0000FF'>__mem</font></a>)
+320     };
+321     <font color='#00FF00'>/* create server key */</font>
+322     <a name='ecc_gen'><font color='#0000FF'>ecc_gen</font></a>(<a href='#dom'><font color='#0000FF'>dom</font></a><b>,</b><a href='#pk_tau'><font color='#0000FF'>pk_tau</font></a><b>,</b><b>&amp;</b><a href='#sk'><font color='#0000FF'>sk</font></a>);
+323     <font color='#00FF00'>/* create random shared key a */</font>
+324     <font color='#00FF00'>/* create random revocation key t */</font>
+325     <a name='octet_reset'><font color='#0000FF'>octet_reset</font></a>(<a href='#a'><font color='#0000FF'>a</font></a>);
+326     <a href='#octet_reset'><font color='#0000FF'>octet_reset</font></a>(<a href='#t'><font color='#0000FF'>t</font></a>);
+327     <a name='octet_fill_random'><font color='#0000FF'>octet_fill_random</font></a>(<a href='#a'><font color='#0000FF'>a</font></a><b>,</b><a href='#a'><font color='#0000FF'>a</font></a><b>-&gt;</b><a href='#max'><font color='#0000FF'>max</font></a>);
+328     <a href='#octet_fill_random'><font color='#0000FF'>octet_fill_random</font></a>(<a href='#t'><font color='#0000FF'>t</font></a><b>,</b><a href='#t'><font color='#0000FF'>t</font></a><b>-&gt;</b><a href='#max'><font color='#0000FF'>max</font></a>);
+329     <font color='#00FF00'>/* append pin-hash to ticket */</font>
+330     <a href='#octet_put_big'><font color='#0000FF'>octet_put_big</font></a>(<b>&amp;</b><a href='#tmp'><font color='#0000FF'>tmp</font></a><b>.</b><a href='#ticket'><font color='#0000FF'>ticket</font></a><b>,</b><a href='#sk'><font color='#0000FF'>sk</font></a><b>.</b><a href='#x'><font color='#0000FF'>x</font></a>);
+331     <a href='#octet_append'><font color='#0000FF'>octet_append</font></a>(<b>&amp;</b><a href='#tmp'><font color='#0000FF'>tmp</font></a><b>.</b><a href='#ticket'><font color='#0000FF'>ticket</font></a><b>,</b><a href='#a'><font color='#0000FF'>a</font></a><b>-&gt;</b><a href='#val'><font color='#0000FF'>val</font></a><b>,</b><a href='#a'><font color='#0000FF'>a</font></a><b>-&gt;</b><a href='#max'><font color='#0000FF'>max</font></a>);
+332     <a href='#sha256_append'><font color='#0000FF'>sha256_append</font></a>(<a href='#t'><font color='#0000FF'>t</font></a><b>,</b><b>&amp;</b><a href='#tmp'><font color='#0000FF'>tmp</font></a><b>.</b><a href='#ticket'><font color='#0000FF'>ticket</font></a>);
+333     <a href='#sha256_append'><font color='#0000FF'>sha256_append</font></a>(<a href='#pin'><font color='#0000FF'>pin</font></a><b>,</b><b>&amp;</b><a href='#tmp'><font color='#0000FF'>tmp</font></a><b>.</b><a href='#ticket'><font color='#0000FF'>ticket</font></a>);
+334     <font color='#00FF00'>/* encrypt ticket into tau */</font>
+335     <a href='#ecies_enc'><font color='#0000FF'>ecies_enc</font></a>(<a href='#dom'><font color='#0000FF'>dom</font></a><b>,</b><a href='#pk_srv'><font color='#0000FF'>pk_srv</font></a><b>,</b><b>&amp;</b><a href='#tmp'><font color='#0000FF'>tmp</font></a><b>.</b><a href='#ticket'><font color='#0000FF'>ticket</font></a><b>,</b><a href='#tau'><font color='#0000FF'>tau</font></a>);
+336     <font color='#00FF00'>/* create random PRF seed v */</font>
+337     <font color='#00FF00'>/* calculate secret device key from pin and v */</font>
+338     <font color='#0000FF'><b>do</font></b> 
+339     {
+340         <a href='#octet_reset'><font color='#0000FF'>octet_reset</font></a>(<a href='#v'><font color='#0000FF'>v</font></a>);
+341         <a href='#octet_fill_random'><font color='#0000FF'>octet_fill_random</font></a>(<a href='#v'><font color='#0000FF'>v</font></a><b>,</b><a href='#v'><font color='#0000FF'>v</font></a><b>-&gt;</b><a href='#max'><font color='#0000FF'>max</font></a>);
+342         <a name='octet_clear'><font color='#0000FF'>octet_clear</font></a>(<b>&amp;</b><a href='#tmp'><font color='#0000FF'>tmp</font></a><b>.</b><a href='#sk_raw'><font color='#0000FF'>sk_raw</font></a>);
+343         <a href='#tmp'><font color='#0000FF'>tmp</font></a><b>.</b><a href='#sk_raw'><font color='#0000FF'>sk_raw</font></a><b>.</b><a href='#max'><font color='#0000FF'>max</font></a> <b>=</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>-&gt;</b><a href='#fsize'><font color='#0000FF'>fsize</font></a>;
+344         <a href='#f'><font color='#0000FF'>f</font></a>(<a href='#v'><font color='#0000FF'>v</font></a><b>,</b><a href='#pin'><font color='#0000FF'>pin</font></a><b>,</b><b>&amp;</b><a href='#tmp'><font color='#0000FF'>tmp</font></a><b>.</b><a href='#sk_raw'><font color='#0000FF'>sk_raw</font></a>);
+345         <a href='#bytes_to_big'><font color='#0000FF'>bytes_to_big</font></a>(<a href='#tmp'><font color='#0000FF'>tmp</font></a><b>.</b><a href='#sk_raw'><font color='#0000FF'>sk_raw</font></a><b>.</b><a href='#len'><font color='#0000FF'>len</font></a><b>,</b><a href='#tmp'><font color='#0000FF'>tmp</font></a><b>.</b><a href='#sk_raw'><font color='#0000FF'>sk_raw</font></a><b>.</b><a href='#val'><font color='#0000FF'>val</font></a><b>,</b><a href='#sk'><font color='#0000FF'>sk</font></a><b>.</b><a href='#x'><font color='#0000FF'>x</font></a>);
+346         
+347     }
+348     <font color='#0000FF'><b>while</font></b> (<a name='compare'><font color='#0000FF'>compare</font></a>(<a href='#sk'><font color='#0000FF'>sk</font></a><b>.</b><a href='#x'><font color='#0000FF'>x</font></a><b>,</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>-&gt;</b><a href='#n'><font color='#0000FF'>n</font></a>)<b>&gt;=</b><font color='#00FFFF'><I>0</I></font>);
+349     <a name='ecc_pk_init'><font color='#0000FF'>ecc_pk_init</font></a>(<a href='#pk'><font color='#0000FF'>pk</font></a>);
+350     <a href='#ecurve_mult'><font color='#0000FF'>ecurve_mult</font></a>(<a href='#sk'><font color='#0000FF'>sk</font></a><b>.</b><a href='#x'><font color='#0000FF'>x</font></a><b>,</b><a href='#pk'><font color='#0000FF'>pk</font></a><b>-&gt;</b><a href='#Y'><font color='#0000FF'>Y</font></a><b>,</b><a href='#pk'><font color='#0000FF'>pk</font></a><b>-&gt;</b><a href='#Y'><font color='#0000FF'>Y</font></a>);
+351     <a name='ecurve_add'><font color='#0000FF'>ecurve_add</font></a>(<a href='#pk_tau'><font color='#0000FF'>pk_tau</font></a><b>-&gt;</b><a href='#Y'><font color='#0000FF'>Y</font></a><b>,</b><a href='#pk'><font color='#0000FF'>pk</font></a><b>-&gt;</b><a href='#Y'><font color='#0000FF'>Y</font></a>);
+352     <a href='#epoint_norm'><font color='#0000FF'>epoint_norm</font></a>(<a href='#pk'><font color='#0000FF'>pk</font></a><b>-&gt;</b><a href='#Y'><font color='#0000FF'>Y</font></a>);
+353     <font color='#0000FF'><b>return</font></b> <a href='#E_GOOD'><font color='#0000FF'>E_GOOD</font></a>;
+354     
+355 }
+356 <font color='#00FF00'>/**
+ *  Assume elliptic curve environment has already been initialized.
+ */</font>
+357 <a href='#PUBLIC'><font color='#0000FF'>PUBLIC</font></a> <a href='#err_t'><font color='#0000FF'>err_t</font></a> <a name='ecsign_2p_init_foo'><font color='#0000FF'>ecsign_2p_init_foo</font></a>(<font color='#0000FF'><b>struct</font></b> <a href='#device'><font color='#0000FF'>device</font></a> <b>*</b><a href='#dvc'><font color='#0000FF'>dvc</font></a><b>,</b><font color='#0000FF'><b>char</font></b> <b>*</b><a href='#pin'><font color='#0000FF'>pin</font></a><b>,</b><font color='#0000FF'><b>const</font></b> <a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#pk_srv'><font color='#0000FF'>pk_srv</font></a>)
+358 {
+359     <font color='#0000FF'><b>char</font></b> <a href='#mmb'><font color='#0000FF'>mmb</font></a>[<a href='#MR_BIG_RESERVE'><font color='#0000FF'>MR_BIG_RESERVE</font></a>(<font color='#00FFFF'><I>4</I></font>)]<b>=</b>
+360     {
+361         <font color='#00FFFF'><I>0</I></font>
+362     };
+363     <font color='#0000FF'><b>char</font></b> <a href='#mmp'><font color='#0000FF'>mmp</font></a>[<a href='#MR_ECP_RESERVE'><font color='#0000FF'>MR_ECP_RESERVE</font></a>(<font color='#00FFFF'><I>5</I></font>)]<b>=</b>
+364     {
+365         <font color='#00FFFF'><I>0</I></font>
+366     };
+367     <font color='#0000FF'><b>char</font></b> <a name='mx2'><font color='#0000FF'>mx2</font></a>[<font color='#00FFFF'><I>32</I></font>]<b>=</b>
+368     {
+369         <font color='#00FFFF'><I>0</I></font>
+370     };
+371     <font color='#FF00FF'><b>#define kappa 32</b></font>
+372     <font color='#00FF00'>// lambda = EC key size in bytes (e.g. 24 bytes for 192 bit curve)</font>
+373     <font color='#FF00FF'><b>#define lambda 24</b></font>
+374     <a href='#octet'><font color='#0000FF'>octet</font></a> <a href='#a'><font color='#0000FF'>a</font></a>;
+375     <font color='#00FF00'>/**&lt; MAC key */</font>
+376     <a href='#octet'><font color='#0000FF'>octet</font></a> <a href='#t'><font color='#0000FF'>t</font></a>;
+377     <font color='#00FF00'>/**&lt; random disable token */</font>
+378     <a href='#octet'><font color='#0000FF'>octet</font></a> <a href='#v'><font color='#0000FF'>v</font></a>;
+379     <font color='#00FF00'>/**&lt; device key for x1 creation */</font>
+380     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='oct_x1'><font color='#0000FF'>oct_x1</font></a>;
+381     <font color='#00FF00'>/**&lt; device key */</font>
+382     <a href='#big'><font color='#0000FF'>big</font></a> <a name='x1'><font color='#0000FF'>x1</font></a>;
+383     <a href='#big'><font color='#0000FF'>big</font></a> <a name='x2'><font color='#0000FF'>x2</font></a>;
+384     <font color='#00FF00'>/**&lt; servers key */</font>
+385     <a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><a name='Y1'><font color='#0000FF'>Y1</font></a>;
+386     <font color='#00FF00'>/**&lt; public key x1*G */</font>
+387     <a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><a name='Y2'><font color='#0000FF'>Y2</font></a>;
+388     <font color='#00FF00'>/**&lt; public key x2*G */</font>
+389     <a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><a href='#Y'><font color='#0000FF'>Y</font></a>;
+390     <font color='#00FF00'>/**&lt; public key Y1 + Y2 */</font>
+391     <a href='#octet'><font color='#0000FF'>octet</font></a> <a href='#tau'><font color='#0000FF'>tau</font></a>;
+392     <font color='#00FF00'>/**&lt; the holey ticket */</font>
+393     <a href='#octet'><font color='#0000FF'>octet</font></a> <a href='#ticket'><font color='#0000FF'>ticket</font></a>;
+394     <font color='#00FF00'>/**&lt; unencrypted tau */</font>
+395     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='opin'><font color='#0000FF'>opin</font></a>;
+396     <a href='#u32'><font color='#0000FF'>u32</font></a> <a href='#bytes'><font color='#0000FF'>bytes</font></a>;
+397     <a href='#u32'><font color='#0000FF'>u32</font></a> <a name='blub'><font color='#0000FF'>blub</font></a>;
+398     <font color='#0000FF'><b>char</font></b> <a name='mem'><font color='#0000FF'>mem</font></a>[<a href='#MR_BIG_RESERVE'><font color='#0000FF'>MR_BIG_RESERVE</font></a>(<font color='#00FFFF'><I>6</I></font>)]<b>=</b>
+399     {
+400         <font color='#00FFFF'><I>0</I></font>
+401     };
+402     <a href='#big'><font color='#0000FF'>big</font></a> <a href='#k1'><font color='#0000FF'>k1</font></a><b>,</b><a name='k2'><font color='#0000FF'>k2</font></a><b>,</b><a href='#r'><font color='#0000FF'>r</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a><b>,</b><a name='ri'><font color='#0000FF'>ri</font></a>;
+403     <a href='#big'><font color='#0000FF'>big</font></a> <a href='#m'><font color='#0000FF'>m</font></a>;
+404     <a href='#big'><font color='#0000FF'>big</font></a> <font color='#0000FF'><b>const</font></b> <a href='#n'><font color='#0000FF'>n</font></a> <b>=</b><a href='#pub'><font color='#0000FF'>pub</font></a><b>.</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>-&gt;</b><a href='#n'><font color='#0000FF'>n</font></a>;
+405     <a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><a href='#R'><font color='#0000FF'>R</font></a>;
+406     <a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><a href='#P'><font color='#0000FF'>P</font></a>;
+407     <a name='miracl'><font color='#0000FF'>miracl</font></a> <b>*</b><a name='mip'><font color='#0000FF'>mip</font></a> <b>=</b><a name='get_mip'><font color='#0000FF'>get_mip</font></a>();
+408     <a href='#x1'><font color='#0000FF'>x1</font></a> <b>=</b><a href='#mirvar_mem'><font color='#0000FF'>mirvar_mem</font></a>(<a href='#mmb'><font color='#0000FF'>mmb</font></a><b>,</b><font color='#00FFFF'><I>0</I></font>);
+409     <a href='#x2'><font color='#0000FF'>x2</font></a> <b>=</b><a href='#mirvar_mem'><font color='#0000FF'>mirvar_mem</font></a>(<a href='#mmb'><font color='#0000FF'>mmb</font></a><b>,</b><font color='#00FFFF'><I>1</I></font>);
+410     <a href='#Y1'><font color='#0000FF'>Y1</font></a> <b>=</b><a href='#epoint_init_mem'><font color='#0000FF'>epoint_init_mem</font></a>(<a href='#mmp'><font color='#0000FF'>mmp</font></a><b>,</b><font color='#00FFFF'><I>0</I></font>);
+411     <a href='#Y2'><font color='#0000FF'>Y2</font></a> <b>=</b><a href='#epoint_init_mem'><font color='#0000FF'>epoint_init_mem</font></a>(<a href='#mmp'><font color='#0000FF'>mmp</font></a><b>,</b><font color='#00FFFF'><I>1</I></font>);
+412     <a href='#Y'><font color='#0000FF'>Y</font></a> <b>=</b><a href='#epoint_init_mem'><font color='#0000FF'>epoint_init_mem</font></a>(<a href='#mmp'><font color='#0000FF'>mmp</font></a><b>,</b><font color='#00FFFF'><I>2</I></font>);
+413     <a href='#R'><font color='#0000FF'>R</font></a> <b>=</b><a href='#epoint_init_mem'><font color='#0000FF'>epoint_init_mem</font></a>(<a href='#mmp'><font color='#0000FF'>mmp</font></a><b>,</b><font color='#00FFFF'><I>3</I></font>);
+414     <a href='#P'><font color='#0000FF'>P</font></a> <b>=</b><a href='#epoint_init_mem'><font color='#0000FF'>epoint_init_mem</font></a>(<a href='#mmp'><font color='#0000FF'>mmp</font></a><b>,</b><font color='#00FFFF'><I>4</I></font>);
+415     <a href='#k1'><font color='#0000FF'>k1</font></a> <b>=</b><a href='#mirvar_mem'><font color='#0000FF'>mirvar_mem</font></a>(<a href='#mem'><font color='#0000FF'>mem</font></a><b>,</b><font color='#00FFFF'><I>0</I></font>);
+416     <a href='#k2'><font color='#0000FF'>k2</font></a> <b>=</b><a href='#mirvar_mem'><font color='#0000FF'>mirvar_mem</font></a>(<a href='#mem'><font color='#0000FF'>mem</font></a><b>,</b><font color='#00FFFF'><I>1</I></font>);
+417     <a href='#r'><font color='#0000FF'>r</font></a> <b>=</b><a href='#mirvar_mem'><font color='#0000FF'>mirvar_mem</font></a>(<a href='#mem'><font color='#0000FF'>mem</font></a><b>,</b><font color='#00FFFF'><I>2</I></font>);
+418     <a href='#s'><font color='#0000FF'>s</font></a> <b>=</b><a href='#mirvar_mem'><font color='#0000FF'>mirvar_mem</font></a>(<a href='#mem'><font color='#0000FF'>mem</font></a><b>,</b><font color='#00FFFF'><I>3</I></font>);
+419     <a href='#ri'><font color='#0000FF'>ri</font></a> <b>=</b><a href='#mirvar_mem'><font color='#0000FF'>mirvar_mem</font></a>(<a href='#mem'><font color='#0000FF'>mem</font></a><b>,</b><font color='#00FFFF'><I>4</I></font>);
+420     <a href='#m'><font color='#0000FF'>m</font></a> <b>=</b><a href='#mirvar_mem'><font color='#0000FF'>mirvar_mem</font></a>(<a href='#mem'><font color='#0000FF'>mem</font></a><b>,</b><font color='#00FFFF'><I>5</I></font>);
+421     <a href='#OCTET_INIT'><font color='#0000FF'>OCTET_INIT</font></a>(<b>&amp;</b><a href='#a'><font color='#0000FF'>a</font></a><b>,</b><a name='kappa'><font color='#0000FF'>kappa</font></a>);
+422     <a href='#OCTET_INIT'><font color='#0000FF'>OCTET_INIT</font></a>(<b>&amp;</b><a href='#t'><font color='#0000FF'>t</font></a><b>,</b><a name='kappa'><font color='#0000FF'>kappa</font></a>);
+423     <a href='#OCTET_INIT'><font color='#0000FF'>OCTET_INIT</font></a>(<b>&amp;</b><a href='#v'><font color='#0000FF'>v</font></a><b>,</b><a name='kappa'><font color='#0000FF'>kappa</font></a>);
+424     <a href='#OCTET_INIT'><font color='#0000FF'>OCTET_INIT</font></a>(<b>&amp;</b><a href='#opin'><font color='#0000FF'>opin</font></a><b>,</b><a name='strlen'><font color='#0000FF'>strlen</font></a>(<a href='#pin'><font color='#0000FF'>pin</font></a>));
+425     <a href='#OCTET_INIT'><font color='#0000FF'>OCTET_INIT</font></a>(<b>&amp;</b><a href='#oct_x1'><font color='#0000FF'>oct_x1</font></a><b>,</b><a href='#pub'><font color='#0000FF'>pub</font></a><b>.</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>-&gt;</b><a name='bits'><font color='#0000FF'>bits</font></a><b>/</b><font color='#00FFFF'><I>8</I></font>);
+426     <font color='#00FF00'>/* generate random values with security parameter kappa: */</font>
+427     <font color='#00FF00'>/* a, t, v */</font>
+428     <a name='OCTET_RAND'><font color='#0000FF'>OCTET_RAND</font></a>(<a href='#rng'><font color='#0000FF'>rng</font></a><b>,</b><a name='kappa'><font color='#0000FF'>kappa</font></a><b>,</b><b>&amp;</b><a href='#a'><font color='#0000FF'>a</font></a>);
+429     <a name='OCTET_RAND'><font color='#0000FF'>OCTET_RAND</font></a>(<a href='#rng'><font color='#0000FF'>rng</font></a><b>,</b><a name='kappa'><font color='#0000FF'>kappa</font></a><b>,</b><b>&amp;</b><a href='#t'><font color='#0000FF'>t</font></a>);
+430     <font color='#0000FF'><b>do</font></b> 
+431     {
+432         <a name='OCTET_RAND'><font color='#0000FF'>OCTET_RAND</font></a>(<a href='#rng'><font color='#0000FF'>rng</font></a><b>,</b><a name='kappa'><font color='#0000FF'>kappa</font></a><b>,</b><b>&amp;</b><a href='#v'><font color='#0000FF'>v</font></a>);
+433         <a href='#f'><font color='#0000FF'>f</font></a>(<b>&amp;</b><a href='#v'><font color='#0000FF'>v</font></a><b>,</b><b>&amp;</b><a href='#opin'><font color='#0000FF'>opin</font></a><b>,</b><b>&amp;</b><a href='#oct_x1'><font color='#0000FF'>oct_x1</font></a>);
+434         <a href='#mip'><font color='#0000FF'>mip</font></a><b>-&gt;</b><a name='INPLEN'><font color='#0000FF'>INPLEN</font></a> <b>=</b><a href='#oct_x1'><font color='#0000FF'>oct_x1</font></a><b>.</b><a href='#len'><font color='#0000FF'>len</font></a>;
+435         <a name='instr'><font color='#0000FF'>instr</font></a>(<a href='#x1'><font color='#0000FF'>x1</font></a><b>,</b><a href='#oct_x1'><font color='#0000FF'>oct_x1</font></a><b>.</b><a href='#val'><font color='#0000FF'>val</font></a>);
+436         
+437     }
+438     <font color='#0000FF'><b>while</font></b> (<a href='#compare'><font color='#0000FF'>compare</font></a>(<a href='#x1'><font color='#0000FF'>x1</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a>)<b>&gt;=</b><font color='#00FFFF'><I>0</I></font>);
+439     <font color='#00FF00'>/* create ticket: a, b, u, x2 */</font>
+440     <a href='#OCTET_INIT'><font color='#0000FF'>OCTET_INIT</font></a>(<b>&amp;</b><a href='#ticket'><font color='#0000FF'>ticket</font></a><b>,</b><a name='kappa'><font color='#0000FF'>kappa</font></a> <b>+</b><font color='#00FFFF'><I>2</I></font><b>*</b><font color='#00FFFF'><I>32</I></font><b>+</b><font color='#0000FF'><b>sizeof</font></b>(<a href='#mx2'><font color='#0000FF'>mx2</font></a>));
+441     <a name='OCTET_JOIN_OCTET'><font color='#0000FF'>OCTET_JOIN_OCTET</font></a>(<b>&amp;</b><a href='#a'><font color='#0000FF'>a</font></a><b>,</b><b>&amp;</b><a href='#ticket'><font color='#0000FF'>ticket</font></a>);
+442     <a name='OCTET_JOIN_STRING'><font color='#0000FF'>OCTET_JOIN_STRING</font></a>(<a href='#pin'><font color='#0000FF'>pin</font></a><b>,</b><b>&amp;</b><a href='#opin'><font color='#0000FF'>opin</font></a>);
+443     <a href='#sha256_append'><font color='#0000FF'>sha256_append</font></a>(<b>&amp;</b><a href='#opin'><font color='#0000FF'>opin</font></a><b>,</b><b>&amp;</b><a href='#ticket'><font color='#0000FF'>ticket</font></a>);
+444     <a href='#sha256_append'><font color='#0000FF'>sha256_append</font></a>(<b>&amp;</b><a href='#t'><font color='#0000FF'>t</font></a><b>,</b><b>&amp;</b><a href='#ticket'><font color='#0000FF'>ticket</font></a>);
+445     <font color='#00FF00'>/* generate x2 random from [0, dom-&gt;R] */</font>
+446     <font color='#00FF00'>/* n is order of G */</font>
+447     <a href='#bigrand'><font color='#0000FF'>bigrand</font></a>(<a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#x2'><font color='#0000FF'>x2</font></a>);
+448     <font color='#00FF00'>// FIXME dangerous on max == len</font>
+449     <font color='#00FF00'>// XXX method returns signed integer</font>
+450     <font color='#00FF00'>// big_to_bytes(...)</font>
+451     <font color='#00FF00'>/*  */</font>
+452     <a name='otstr'><font color='#0000FF'>otstr</font></a>(<a href='#x2'><font color='#0000FF'>x2</font></a><b>,</b><a href='#mx2'><font color='#0000FF'>mx2</font></a>);
+453     <a href='#OCTET_JOIN_BYTES'><font color='#0000FF'>OCTET_JOIN_BYTES</font></a>(<a href='#mx2'><font color='#0000FF'>mx2</font></a><b>,</b><font color='#0000FF'><b>sizeof</font></b>(<a href='#mx2'><font color='#0000FF'>mx2</font></a>)<b>,</b><b>&amp;</b><a href='#ticket'><font color='#0000FF'>ticket</font></a>);
+454     <font color='#00FF00'>// big_to_bytes()</font>
+455     <font color='#00FF00'>/*  write to secret file: a, v, tau, (pk_server)
+	 *  write to public file: Y,
+	 *  semi public:          Y1, Y2
+	 */</font>
+456     <a href='#ecurve_mult'><font color='#0000FF'>ecurve_mult</font></a>(<a href='#x1'><font color='#0000FF'>x1</font></a><b>,</b><a href='#pub'><font color='#0000FF'>pub</font></a><b>.</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>-&gt;</b><a href='#G'><font color='#0000FF'>G</font></a><b>,</b><a href='#Y1'><font color='#0000FF'>Y1</font></a>);
+457     <a href='#ecurve_mult'><font color='#0000FF'>ecurve_mult</font></a>(<a href='#x2'><font color='#0000FF'>x2</font></a><b>,</b><a href='#pub'><font color='#0000FF'>pub</font></a><b>.</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>-&gt;</b><a href='#G'><font color='#0000FF'>G</font></a><b>,</b><a href='#Y2'><font color='#0000FF'>Y2</font></a>);
+458     <a href='#epoint_set'><font color='#0000FF'>epoint_set</font></a>(<a href='#NULL'><font color='#0000FF'>NULL</font></a><b>,</b><a href='#NULL'><font color='#0000FF'>NULL</font></a><b>,</b><font color='#00FFFF'><I>0</I></font><b>,</b><a href='#Y'><font color='#0000FF'>Y</font></a>);
+459     <a href='#ecurve_add'><font color='#0000FF'>ecurve_add</font></a>(<a href='#Y1'><font color='#0000FF'>Y1</font></a><b>,</b><a href='#Y'><font color='#0000FF'>Y</font></a>);
+460     <a href='#ecurve_add'><font color='#0000FF'>ecurve_add</font></a>(<a href='#Y2'><font color='#0000FF'>Y2</font></a><b>,</b><a href='#Y'><font color='#0000FF'>Y</font></a>);
+461     <font color='#00FF00'>/* create a random message */</font>
+462     <a href='#bigrand'><font color='#0000FF'>bigrand</font></a>(<a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#m'><font color='#0000FF'>m</font></a>);
+463     <a href='#bigrand'><font color='#0000FF'>bigrand</font></a>(<a href='#pub'><font color='#0000FF'>pub</font></a><b>.</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>-&gt;</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#k1'><font color='#0000FF'>k1</font></a>);
+464     <a href='#bigrand'><font color='#0000FF'>bigrand</font></a>(<a href='#pub'><font color='#0000FF'>pub</font></a><b>.</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>-&gt;</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#k2'><font color='#0000FF'>k2</font></a>);
+465     <font color='#00FF00'>/* create shared point R */</font>
+466     <a href='#ecurve_mult'><font color='#0000FF'>ecurve_mult</font></a>(<a href='#k1'><font color='#0000FF'>k1</font></a><b>,</b><a href='#pub'><font color='#0000FF'>pub</font></a><b>.</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>-&gt;</b><a href='#G'><font color='#0000FF'>G</font></a><b>,</b><a href='#R'><font color='#0000FF'>R</font></a>);
+467     <a href='#ecurve_mult'><font color='#0000FF'>ecurve_mult</font></a>(<a href='#k2'><font color='#0000FF'>k2</font></a><b>,</b><a href='#pub'><font color='#0000FF'>pub</font></a><b>.</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>-&gt;</b><a href='#G'><font color='#0000FF'>G</font></a><b>,</b><a href='#P'><font color='#0000FF'>P</font></a>);
+468     <a href='#ecurve_add'><font color='#0000FF'>ecurve_add</font></a>(<a href='#P'><font color='#0000FF'>P</font></a><b>,</b><a href='#R'><font color='#0000FF'>R</font></a>);
+469     <a name='epoint_get'><font color='#0000FF'>epoint_get</font></a>(<a href='#R'><font color='#0000FF'>R</font></a><b>,</b><a href='#r'><font color='#0000FF'>r</font></a><b>,</b><a href='#r'><font color='#0000FF'>r</font></a>);
+470     <a name='divide'><font color='#0000FF'>divide</font></a>(<a href='#r'><font color='#0000FF'>r</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a>);
+471     <font color='#00FF00'>// r = r mod n</font>
+472     <font color='#00FF00'>/* create a sample signature x2 */</font>
+473     <a name='mad'><font color='#0000FF'>mad</font></a>(<a href='#x2'><font color='#0000FF'>x2</font></a><b>,</b><a href='#m'><font color='#0000FF'>m</font></a><b>,</b><a href='#m'><font color='#0000FF'>m</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a>);
+474     <font color='#00FF00'>// s = x2*m mod n</font>
+475     <a name='mad'><font color='#0000FF'>mad</font></a>(<a href='#k2'><font color='#0000FF'>k2</font></a><b>,</b><a href='#r'><font color='#0000FF'>r</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a>);
+476     <font color='#00FF00'>// s = s + k1*r mod n</font>
+477     <font color='#00FF00'>/* create sample signature x1 */</font>
+478     <a name='mad'><font color='#0000FF'>mad</font></a>(<a href='#x1'><font color='#0000FF'>x1</font></a><b>,</b><a href='#m'><font color='#0000FF'>m</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a>);
+479     <font color='#00FF00'>// s = s + x1*m mod n</font>
+480     <a name='mad'><font color='#0000FF'>mad</font></a>(<a href='#k1'><font color='#0000FF'>k1</font></a><b>,</b><a href='#r'><font color='#0000FF'>r</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a>);
+481     <font color='#00FF00'>// s = s + k1*r mod n</font>
+482     <font color='#00FF00'>/* verify(m,r,s) */</font>
+483     <a name='xgcd'><font color='#0000FF'>xgcd</font></a>(<a href='#r'><font color='#0000FF'>r</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#ri'><font color='#0000FF'>ri</font></a><b>,</b><a href='#ri'><font color='#0000FF'>ri</font></a><b>,</b><a href='#ri'><font color='#0000FF'>ri</font></a>);
+484     <a name='mad'><font color='#0000FF'>mad</font></a>(<a href='#r'><font color='#0000FF'>r</font></a><b>,</b><a href='#ri'><font color='#0000FF'>ri</font></a><b>,</b><a href='#ri'><font color='#0000FF'>ri</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#k1'><font color='#0000FF'>k1</font></a>);
+485     <font color='#00FF00'>// k should be 1;</font>
+486     <a href='#blub'><font color='#0000FF'>blub</font></a> <b>=</b><a name='size'><font color='#0000FF'>size</font></a>(<a href='#k1'><font color='#0000FF'>k1</font></a>);
+487     <a name='mad'><font color='#0000FF'>mad</font></a>(<a href='#s'><font color='#0000FF'>s</font></a><b>,</b><a href='#ri'><font color='#0000FF'>ri</font></a><b>,</b><a href='#ri'><font color='#0000FF'>ri</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a>);
+488     <font color='#00FF00'>// s = s*r^-1 mod n</font>
+489     <a name='mad'><font color='#0000FF'>mad</font></a>(<a href='#m'><font color='#0000FF'>m</font></a><b>,</b><a href='#ri'><font color='#0000FF'>ri</font></a><b>,</b><a href='#ri'><font color='#0000FF'>ri</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#m'><font color='#0000FF'>m</font></a>);
+490     <font color='#00FF00'>// m = m*r^-1 mod n</font>
+491     <a href='#ecurve_mult'><font color='#0000FF'>ecurve_mult</font></a>(<a href='#m'><font color='#0000FF'>m</font></a><b>,</b><a href='#Y'><font color='#0000FF'>Y</font></a><b>,</b><a href='#Y'><font color='#0000FF'>Y</font></a>);
+492     <font color='#00FF00'>// Y = m*r1 * Y</font>
+493     <a href='#ecurve_mult'><font color='#0000FF'>ecurve_mult</font></a>(<a href='#s'><font color='#0000FF'>s</font></a><b>,</b><a href='#pub'><font color='#0000FF'>pub</font></a><b>.</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>-&gt;</b><a href='#G'><font color='#0000FF'>G</font></a><b>,</b><a href='#R'><font color='#0000FF'>R</font></a>);
+494     <a name='ecurve_sub'><font color='#0000FF'>ecurve_sub</font></a>(<a href='#Y'><font color='#0000FF'>Y</font></a><b>,</b><a href='#R'><font color='#0000FF'>R</font></a>);
+495     <a name='epoint_get'><font color='#0000FF'>epoint_get</font></a>(<a href='#R'><font color='#0000FF'>R</font></a><b>,</b><a href='#x1'><font color='#0000FF'>x1</font></a><b>,</b><a href='#x1'><font color='#0000FF'>x1</font></a>);
+496     <a name='divide'><font color='#0000FF'>divide</font></a>(<a href='#x1'><font color='#0000FF'>x1</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a>);
+497     <a href='#blub'><font color='#0000FF'>blub</font></a> <b>=</b><a href='#compare'><font color='#0000FF'>compare</font></a>(<a href='#r'><font color='#0000FF'>r</font></a><b>,</b><a href='#x1'><font color='#0000FF'>x1</font></a>);
+498     <font color='#0000FF'><b>return</font></b> <a href='#E_GOOD'><font color='#0000FF'>E_GOOD</font></a>;
+499     
+500 }
+501 <a href='#PUBLIC'><font color='#0000FF'>PUBLIC</font></a> <a href='#err_t'><font color='#0000FF'>err_t</font></a> <a name='ecsign_2p_start'><font color='#0000FF'>ecsign_2p_start</font></a>(<font color='#0000FF'><b>const</font></b> <a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#m'><font color='#0000FF'>m</font></a><b>,</b><font color='#0000FF'><b>const</font></b> <a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#pin'><font color='#0000FF'>pin</font></a>)
+502 {
+503     <a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><a name='R1'><font color='#0000FF'>R1</font></a>;
+504     <a href='#big'><font color='#0000FF'>big</font></a> <a href='#k1'><font color='#0000FF'>k1</font></a>;
+505     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='g'><font color='#0000FF'>g</font></a>;
+506     <font color='#00FF00'>// session</font>
+507     <font color='#00FF00'>// g &lt;- &lt;m, R, hash(pin)&gt;</font>
+508     <font color='#0000FF'><b>return</font></b> <a name='E_NO_LOGIC'><font color='#0000FF'>E_NO_LOGIC</font></a>;
+509     
+510 }
+511 <font color='#00FF00'>/**
+ * gamma = pk_server encrypted &lt;message, pin hash, point R1, rho&gt;
+ * tau   = pk_server encrypted &lt;hmac_key, pin hash, disable hash, key&gt;
+ * delta = message hash (32byte at sha256)
+ */</font>
+512 <a href='#PUBLIC'><font color='#0000FF'>PUBLIC</font></a> <a href='#err_t'><font color='#0000FF'>err_t</font></a> <a name='ecsign_2p_serve'><font color='#0000FF'>ecsign_2p_serve</font></a>(<a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a name='gamma'><font color='#0000FF'>gamma</font></a><b>,</b><a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a href='#tau'><font color='#0000FF'>tau</font></a><b>,</b><a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a name='delta'><font color='#0000FF'>delta</font></a><b>,</b><a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a name='eta'><font color='#0000FF'>eta</font></a>)
+513 {
+514     <a href='#big'><font color='#0000FF'>big</font></a> <a href='#m'><font color='#0000FF'>m</font></a>;
+515     <a href='#big'><font color='#0000FF'>big</font></a> <a href='#s'><font color='#0000FF'>s</font></a>;
+516     <a href='#big'><font color='#0000FF'>big</font></a> <a href='#r'><font color='#0000FF'>r</font></a>;
+517     <a href='#big'><font color='#0000FF'>big</font></a> <a href='#n'><font color='#0000FF'>n</font></a> <b>=</b><a href='#pub'><font color='#0000FF'>pub</font></a><b>.</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>-&gt;</b><a href='#n'><font color='#0000FF'>n</font></a>;
+518     <a href='#big'><font color='#0000FF'>big</font></a> <a href='#k2'><font color='#0000FF'>k2</font></a>;
+519     <a href='#big'><font color='#0000FF'>big</font></a> <a name='r1x'><font color='#0000FF'>r1x</font></a><b>,</b><a name='r1y'><font color='#0000FF'>r1y</font></a>;
+520     <a href='#big'><font color='#0000FF'>big</font></a> <a href='#x2'><font color='#0000FF'>x2</font></a>;
+521     <a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><a href='#R'><font color='#0000FF'>R</font></a>;
+522     <a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><a name='R1'><font color='#0000FF'>R1</font></a>;
+523     <a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><a name='R2'><font color='#0000FF'>R2</font></a>;
+524     <a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><a href='#G'><font color='#0000FF'>G</font></a> <b>=</b><a href='#pub'><font color='#0000FF'>pub</font></a><b>.</b><a href='#dom'><font color='#0000FF'>dom</font></a><b>-&gt;</b><a href='#G'><font color='#0000FF'>G</font></a>;
+525     <font color='#00FF00'>/* prerequisite */</font>
+526     <font color='#00FF00'>/* decrypt gamma = &lt;m, beta, r1_x, r1_y, otp&gt; */</font>
+527     <font color='#00FF00'>/* remove OTP from tau */</font>
+528     <font color='#00FF00'>/* get hash of tau -&gt; check against black list */</font>
+529     <font color='#00FF00'>/* decrypt tau = &lt;a, b, u, x2&gt; */</font>
+530     <font color='#00FF00'>/* check HMAC_a(gamma, tau) = delta */</font>
+531     <font color='#00FF00'>/* verify PIN: if (beta != b) abort */</font>
+532     <font color='#00FF00'>/* signatur creation */</font>
+533     <font color='#00FF00'>/* k2 &lt;- random */</font>
+534     <a href='#epoint_set'><font color='#0000FF'>epoint_set</font></a>(<a name='r1x'><font color='#0000FF'>r1x</font></a><b>,</b><a name='r1y'><font color='#0000FF'>r1y</font></a><b>,</b><font color='#00FFFF'><I>0</I></font><b>,</b><a name='R1'><font color='#0000FF'>R1</font></a>);
+535     <a href='#ecurve_mult'><font color='#0000FF'>ecurve_mult</font></a>(<a href='#k2'><font color='#0000FF'>k2</font></a><b>,</b><a href='#G'><font color='#0000FF'>G</font></a><b>,</b><a name='R2'><font color='#0000FF'>R2</font></a>);
+536     <a href='#ecurve_mult'><font color='#0000FF'>ecurve_mult</font></a>(<a href='#k2'><font color='#0000FF'>k2</font></a><b>,</b><a name='R1'><font color='#0000FF'>R1</font></a><b>,</b><a href='#R'><font color='#0000FF'>R</font></a>);
+537     <a name='epoint_get'><font color='#0000FF'>epoint_get</font></a>(<a href='#R'><font color='#0000FF'>R</font></a><b>,</b><a href='#r'><font color='#0000FF'>r</font></a><b>,</b><a href='#r'><font color='#0000FF'>r</font></a>);
+538     <a name='divide'><font color='#0000FF'>divide</font></a>(<a href='#r'><font color='#0000FF'>r</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a>);
+539     <font color='#00FF00'>/* calculate signature: s = x*m + k2*r */</font>
+540     <a name='mad'><font color='#0000FF'>mad</font></a>(<a href='#x2'><font color='#0000FF'>x2</font></a><b>,</b><a href='#m'><font color='#0000FF'>m</font></a><b>,</b><a href='#m'><font color='#0000FF'>m</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a>);
+541     <a name='mad'><font color='#0000FF'>mad</font></a>(<a href='#k2'><font color='#0000FF'>k2</font></a><b>,</b><a href='#r'><font color='#0000FF'>r</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a>);
+542     <font color='#0000FF'><b>return</font></b> <a href='#E_GOOD'><font color='#0000FF'>E_GOOD</font></a>;
+543     
+544 }
+545 <font color='#00FF00'>/**
+ *  Process server message.
+ */</font>
+546 <a href='#PUBLIC'><font color='#0000FF'>PUBLIC</font></a> <a href='#err_t'><font color='#0000FF'>err_t</font></a> <a name='ecsign_2p_finish'><font color='#0000FF'>ecsign_2p_finish</font></a>(<a href='#octet'><font color='#0000FF'>octet</font></a> <b>*</b><a name='eta'><font color='#0000FF'>eta</font></a>)
+547 {
+548     <a href='#big'><font color='#0000FF'>big</font></a> <a href='#x1'><font color='#0000FF'>x1</font></a>;
+549     <a href='#big'><font color='#0000FF'>big</font></a> <a href='#r'><font color='#0000FF'>r</font></a>;
+550     <a href='#big'><font color='#0000FF'>big</font></a> <a name='r2x'><font color='#0000FF'>r2x</font></a><b>,</b><a name='r2y'><font color='#0000FF'>r2y</font></a>;
+551     <a href='#big'><font color='#0000FF'>big</font></a> <a href='#s'><font color='#0000FF'>s</font></a>;
+552     <a href='#big'><font color='#0000FF'>big</font></a> <a href='#n'><font color='#0000FF'>n</font></a>;
+553     <a href='#big'><font color='#0000FF'>big</font></a> <a href='#m'><font color='#0000FF'>m</font></a>;
+554     <a href='#big'><font color='#0000FF'>big</font></a> <a href='#k1'><font color='#0000FF'>k1</font></a> <b>=</b><a href='#dvc'><font color='#0000FF'>dvc</font></a><b>.</b><a href='#k1'><font color='#0000FF'>k1</font></a>;
+555     <a href='#epoint'><font color='#0000FF'>epoint</font></a> <b>*</b><a href='#R'><font color='#0000FF'>R</font></a>;
+556     <a href='#epoint_set'><font color='#0000FF'>epoint_set</font></a>(<a name='r2x'><font color='#0000FF'>r2x</font></a><b>,</b><a name='r2y'><font color='#0000FF'>r2y</font></a><b>,</b><font color='#00FFFF'><I>0</I></font><b>,</b><a href='#R'><font color='#0000FF'>R</font></a>);
+557     <a href='#ecurve_mult'><font color='#0000FF'>ecurve_mult</font></a>(<a href='#k1'><font color='#0000FF'>k1</font></a><b>,</b><a href='#R'><font color='#0000FF'>R</font></a><b>,</b><a href='#R'><font color='#0000FF'>R</font></a>);
+558     <a name='epoint_get'><font color='#0000FF'>epoint_get</font></a>(<a href='#R'><font color='#0000FF'>R</font></a><b>,</b><a href='#r'><font color='#0000FF'>r</font></a><b>,</b><a href='#r'><font color='#0000FF'>r</font></a>);
+559     <font color='#00FF00'>/* calculate signature: s = x2*m + k*r */</font>
+560     <a name='mad'><font color='#0000FF'>mad</font></a>(<a href='#k1'><font color='#0000FF'>k1</font></a><b>,</b><a href='#r'><font color='#0000FF'>r</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a>);
+561     <font color='#00FF00'>// Verify(m, Y2, r, s);</font>
+562     <font color='#00FF00'>/* complete signature: s = x*m + k*r */</font>
+563     <a name='mad'><font color='#0000FF'>mad</font></a>(<a href='#x1'><font color='#0000FF'>x1</font></a><b>,</b><a href='#m'><font color='#0000FF'>m</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a href='#s'><font color='#0000FF'>s</font></a>);
+564     <font color='#00FF00'>// Verify(m, Y, r, s);</font>
+565     <font color='#0000FF'><b>return</font></b> <a name='E_NO_LOGIC'><font color='#0000FF'>E_NO_LOGIC</font></a>;
+566     
+567 }
+568 <font color='#00FF00'>/**
+ * Clean up device.
+ */</font>
+569 <a href='#PUBLIC'><font color='#0000FF'>PUBLIC</font></a> <a href='#err_t'><font color='#0000FF'>err_t</font></a> <a name='ecsign_2p_erase'><font color='#0000FF'>ecsign_2p_erase</font></a>()
+570 {
+571     <font color='#0000FF'><b>return</font></b> <a name='E_NO_LOGIC'><font color='#0000FF'>E_NO_LOGIC</font></a>;
+572     
+573 }
+574 <a href='#PUBLIC'><font color='#0000FF'>PUBLIC</font></a> <a href='#err_t'><font color='#0000FF'>err_t</font></a> <a name='flx_curve_activate'><font color='#0000FF'>flx_curve_activate</font></a>(<font color='#0000FF'><b>struct</font></b> <a href='#ecc_dom'><font color='#0000FF'>ecc_dom</font></a> <b>*</b><a href='#c'><font color='#0000FF'>c</font></a>)
+575 {
+576     <a href='#miracl'><font color='#0000FF'>miracl</font></a> <b>*</b><a href='#mip'><font color='#0000FF'>mip</font></a> <b>=</b><a href='#get_mip'><font color='#0000FF'>get_mip</font></a>();
+577     <a name='ecurve_init'><font color='#0000FF'>ecurve_init</font></a>(<a href='#c'><font color='#0000FF'>c</font></a><b>-&gt;</b><a href='#a'><font color='#0000FF'>a</font></a><b>,</b><a href='#c'><font color='#0000FF'>c</font></a><b>-&gt;</b><a href='#b'><font color='#0000FF'>b</font></a><b>,</b><a href='#c'><font color='#0000FF'>c</font></a><b>-&gt;</b><a name='p'><font color='#0000FF'>p</font></a><b>,</b><a name='MR_PROJECTIVE'><font color='#0000FF'>MR_PROJECTIVE</font></a>);
+578     <font color='#0000FF'><b>if</font></b> (<a href='#mip'><font color='#0000FF'>mip</font></a><b>-&gt;</b><a name='ERNUM'><font color='#0000FF'>ERNUM</font></a>)
+579     {
+580         <font color='#0000FF'><b>return</font></b> <a href='#E_FAILED'><font color='#0000FF'>E_FAILED</font></a>;
+581         
+582     }
+583     <font color='#00FF00'>/* verify that G is a real point on this curve */</font>
+584     <font color='#0000FF'><b>if</font></b> (<b>!</b><a href='#epoint_set'><font color='#0000FF'>epoint_set</font></a>(<a href='#c'><font color='#0000FF'>c</font></a><b>-&gt;</b><a href='#G'><font color='#0000FF'>G</font></a><b>-&gt;</b><a href='#X'><font color='#0000FF'>X</font></a><b>,</b><a href='#c'><font color='#0000FF'>c</font></a><b>-&gt;</b><a href='#G'><font color='#0000FF'>G</font></a><b>-&gt;</b><a href='#Y'><font color='#0000FF'>Y</font></a><b>,</b><font color='#00FFFF'><I>0</I></font><b>,</b><a href='#c'><font color='#0000FF'>c</font></a><b>-&gt;</b><a href='#G'><font color='#0000FF'>G</font></a>))
+585     {
+586         <font color='#00FF00'>/* point (gx, gy) is not on curve */</font>
+587         <font color='#0000FF'><b>return</font></b> <a href='#E_FAILED'><font color='#0000FF'>E_FAILED</font></a>;
+588         
+589     }
+590     <font color='#0000FF'><b>return</font></b> <a href='#E_GOOD'><font color='#0000FF'>E_GOOD</font></a>;
+591     
+592 }
+593 <font color='#00FF00'>/*
+ * This kind of override is possible since standard file IO is disabled in MIRACL
+ */</font>
+594 <font color='#FF00FF'><b>#ifdef MR_NO_FILE_IO</b></font>
+595 <a href='#PRIVATE'><font color='#0000FF'>PRIVATE</font></a> <font color='#0000FF'><b>int</font></b> <a name='cinnum'><font color='#0000FF'>cinnum</font></a>(<a href='#big'><font color='#0000FF'>big</font></a> <a name='num'><font color='#0000FF'>num</font></a><b>,</b><a name='FILE'><font color='#0000FF'>FILE</font></a> <b>*</b><a name='fp'><font color='#0000FF'>fp</font></a>)
+596 {
+597     <font color='#0000FF'><b>static</font></b> <font color='#0000FF'><b>char</font></b> <a href='#tmp'><font color='#0000FF'>tmp</font></a>[<font color='#00FFFF'><I>512</I></font><b>/</b><font color='#00FFFF'><I>4</I></font>]<b>=</b>
+598     {
+599         <font color='#00FFFF'><I>0</I></font>
+600     };
+601     <font color='#0000FF'><b>int</font></b> <a href='#c'><font color='#0000FF'>c</font></a>;
+602     <a href='#u32'><font color='#0000FF'>u32</font></a> <a href='#i'><font color='#0000FF'>i</font></a>;
+603     <a href='#miracl'><font color='#0000FF'>miracl</font></a> <b>*</b><a href='#mip'><font color='#0000FF'>mip</font></a> <b>=</b><a href='#get_mip'><font color='#0000FF'>get_mip</font></a>();
+604     <a href='#i'><font color='#0000FF'>i</font></a> <b>=</b><font color='#00FFFF'><I>0</I></font>;
+605     <a href='#c'><font color='#0000FF'>c</font></a> <b>=</b><font color='#00FFFF'><I>0</I></font>;
+606     <font color='#0000FF'><b>while</font></b> ((<a href='#c'><font color='#0000FF'>c</font></a> <b>=</b><a name='fgetc'><font color='#0000FF'>fgetc</font></a>(<a name='fp'><font color='#0000FF'>fp</font></a>)))
+607     {
+608         <font color='#0000FF'><b>if</font></b> (<a href='#c'><font color='#0000FF'>c</font></a> <b>==</b><font color='#00FFFF'><U>'\n'</U></font>)<font color='#0000FF'><b>break</font></b>;
+609         <font color='#0000FF'><b>else</font></b> <a href='#tmp'><font color='#0000FF'>tmp</font></a>[<a href='#i'><font color='#0000FF'>i</font></a><b>+</b><b>+</b>]<b>=</b><a href='#c'><font color='#0000FF'>c</font></a>;
+610         
+611     }
+612     <a href='#mip'><font color='#0000FF'>mip</font></a><b>-&gt;</b><a name='INPLEN'><font color='#0000FF'>INPLEN</font></a> <b>=</b><a href='#i'><font color='#0000FF'>i</font></a>;
+613     <a href='#c'><font color='#0000FF'>c</font></a> <b>=</b><a name='cinstr'><font color='#0000FF'>cinstr</font></a>(<a name='num'><font color='#0000FF'>num</font></a><b>,</b><a href='#tmp'><font color='#0000FF'>tmp</font></a>);
+614     <a href='#memset'><font color='#0000FF'>memset</font></a>(<a href='#tmp'><font color='#0000FF'>tmp</font></a><b>,</b><font color='#00FFFF'><I>0x00</I></font><b>,</b><a href='#i'><font color='#0000FF'>i</font></a>);
+615     <font color='#0000FF'><b>return</font></b> <a href='#c'><font color='#0000FF'>c</font></a>;
+616     
+617 }
+618 <font color='#FF00FF'><b>#endif</b></font>
+619 <font color='#00FF00'>/**
+ * @return order of G
+ */</font>
+620 <a href='#PUBLIC'><font color='#0000FF'>PUBLIC</font></a> <a href='#err_t'><font color='#0000FF'>err_t</font></a> <a name='flx_curve_load'><font color='#0000FF'>flx_curve_load</font></a>(<font color='#0000FF'><b>const</font></b> <font color='#0000FF'><b>char</font></b> <b>*</b><a name='fname'><font color='#0000FF'>fname</font></a><b>,</b><font color='#0000FF'><b>struct</font></b> <a href='#ecc_dom'><font color='#0000FF'>ecc_dom</font></a> <b>*</b><a name='curve'><font color='#0000FF'>curve</font></a>)
+621 {
+622     <a name='FILE'><font color='#0000FF'>FILE</font></a> <b>*</b><a name='fp'><font color='#0000FF'>fp</font></a>;
+623     <a href='#miracl'><font color='#0000FF'>miracl</font></a> <b>*</b><a href='#mip'><font color='#0000FF'>mip</font></a>;
+624     <a name='CHECK_PARAM__NOT_NULL'><font color='#0000FF'>CHECK_PARAM__NOT_NULL</font></a>(<a name='fname'><font color='#0000FF'>fname</font></a>);
+625     <a href='#mip'><font color='#0000FF'>mip</font></a> <b>=</b><a href='#get_mip'><font color='#0000FF'>get_mip</font></a>();
+626     <a name='fp'><font color='#0000FF'>fp</font></a> <b>=</b><a name='fopen'><font color='#0000FF'>fopen</font></a>(<a name='fname'><font color='#0000FF'>fname</font></a><b>,</b><font color='#FF0000'>&quot;r&quot;</font>);
+627     <font color='#0000FF'><b>if</font></b> (<b>!</b><a name='fp'><font color='#0000FF'>fp</font></a>)
+628     {
+629         <a name='fprintf'><font color='#0000FF'>fprintf</font></a>(<a name='stderr'><font color='#0000FF'>stderr</font></a><b>,</b><font color='#FF0000'>&quot;could not open file: %s\n&quot;</font><b>,</b><a name='strerror'><font color='#0000FF'>strerror</font></a>(<a name='errno'><font color='#0000FF'>errno</font></a>));
+630         <font color='#0000FF'><b>return</font></b> <a href='#NULL'><font color='#0000FF'>NULL</font></a>;
+631         
+632     }
+633     <a name='fscanf'><font color='#0000FF'>fscanf</font></a>(<a name='fp'><font color='#0000FF'>fp</font></a><b>,</b><font color='#FF0000'>&quot;%hd\n&quot;</font><b>,</b><b>&amp;</b><a name='curve'><font color='#0000FF'>curve</font></a><b>-&gt;</b><a name='bits'><font color='#0000FF'>bits</font></a>);
+634     <font color='#00FF00'>// FIXME fsize = roundup(log_2(curve-&gt;p)/8)</font>
+635     <a name='curve'><font color='#0000FF'>curve</font></a><b>-&gt;</b><a href='#fsize'><font color='#0000FF'>fsize</font></a> <b>=</b><a name='curve'><font color='#0000FF'>curve</font></a><b>-&gt;</b><a name='bits'><font color='#0000FF'>bits</font></a><b>/</b><font color='#00FFFF'><I>8</I></font>;
+636     <font color='#00FF00'>/* reinitialization does not hurt */</font>
+637     <a name='ecc_dom_init'><font color='#0000FF'>ecc_dom_init</font></a>(<a name='curve'><font color='#0000FF'>curve</font></a>);
+638     <a href='#mip'><font color='#0000FF'>mip</font></a><b>-&gt;</b><a name='IOBASE'><font color='#0000FF'>IOBASE</font></a> <b>=</b><font color='#00FFFF'><I>16</I></font>;
+639     <a name='cinnum'><font color='#0000FF'>cinnum</font></a>(<a name='curve'><font color='#0000FF'>curve</font></a><b>-&gt;</b><a name='p'><font color='#0000FF'>p</font></a><b>,</b><a name='fp'><font color='#0000FF'>fp</font></a>);
+640     <a name='cinnum'><font color='#0000FF'>cinnum</font></a>(<a name='curve'><font color='#0000FF'>curve</font></a><b>-&gt;</b><a href='#a'><font color='#0000FF'>a</font></a><b>,</b><a name='fp'><font color='#0000FF'>fp</font></a>);
+641     <a name='cinnum'><font color='#0000FF'>cinnum</font></a>(<a name='curve'><font color='#0000FF'>curve</font></a><b>-&gt;</b><a href='#b'><font color='#0000FF'>b</font></a><b>,</b><a name='fp'><font color='#0000FF'>fp</font></a>);
+642     <a name='cinnum'><font color='#0000FF'>cinnum</font></a>(<a name='curve'><font color='#0000FF'>curve</font></a><b>-&gt;</b><a href='#n'><font color='#0000FF'>n</font></a><b>,</b><a name='fp'><font color='#0000FF'>fp</font></a>);
+643     <a name='cinnum'><font color='#0000FF'>cinnum</font></a>(<a name='curve'><font color='#0000FF'>curve</font></a><b>-&gt;</b><a href='#G'><font color='#0000FF'>G</font></a><b>-&gt;</b><a href='#X'><font color='#0000FF'>X</font></a><b>,</b><a name='fp'><font color='#0000FF'>fp</font></a>);
+644     <a name='cinnum'><font color='#0000FF'>cinnum</font></a>(<a name='curve'><font color='#0000FF'>curve</font></a><b>-&gt;</b><a href='#G'><font color='#0000FF'>G</font></a><b>-&gt;</b><a href='#Y'><font color='#0000FF'>Y</font></a><b>,</b><a name='fp'><font color='#0000FF'>fp</font></a>);
+645     <font color='#0000FF'><b>return</font></b> <a href='#E_GOOD'><font color='#0000FF'>E_GOOD</font></a>;
+646     
+647 }
+648 <a href='#PRIVATE'><font color='#0000FF'>PRIVATE</font></a> <font color='#0000FF'><b>void</font></b> <a name='pwd'><font color='#0000FF'>pwd</font></a>(<font color='#0000FF'><b>void</font></b>)
+649 {
+650     <font color='#0000FF'><b>char</font></b> <b>*</b><a name='cwd'><font color='#0000FF'>cwd</font></a>;
+651     <a name='cwd'><font color='#0000FF'>cwd</font></a> <b>=</b><a name='getcwd'><font color='#0000FF'>getcwd</font></a>(<font color='#00FFFF'><I>0</I></font><b>,</b><font color='#00FFFF'><I>0</I></font>);
+652     <font color='#0000FF'><b>if</font></b> (<b>!</b><a name='cwd'><font color='#0000FF'>cwd</font></a>)<a name='fprintf'><font color='#0000FF'>fprintf</font></a>(<a name='stderr'><font color='#0000FF'>stderr</font></a><b>,</b><font color='#FF0000'>&quot;getcwd failed: %s\n&quot;</font><b>,</b><a name='strerror'><font color='#0000FF'>strerror</font></a>(<a name='errno'><font color='#0000FF'>errno</font></a>));
+653     <font color='#0000FF'><b>else</font></b> <a name='printf'><font color='#0000FF'>printf</font></a>(<font color='#FF0000'>&quot;cwd: %s\n&quot;</font><b>,</b><a name='cwd'><font color='#0000FF'>cwd</font></a>);
+654     <a name='free'><font color='#0000FF'>free</font></a>(<a name='cwd'><font color='#0000FF'>cwd</font></a>);
+655     
+656 }
+657 <a href='#u8'><font color='#0000FF'>u8</font></a> <a name='map_plus_one'><font color='#0000FF'>map_plus_one</font></a>(<a href='#u8'><font color='#0000FF'>u8</font></a> <a href='#v'><font color='#0000FF'>v</font></a>)
+658 {
+659     <font color='#0000FF'><b>return</font></b> <a href='#v'><font color='#0000FF'>v</font></a> <b>+</b><font color='#00FFFF'><I>1</I></font>;
+660     
+661 }
+662 <font color='#0000FF'><b>int</font></b> <a name='main'><font color='#0000FF'>main</font></a>(<font color='#0000FF'><b>void</font></b>)
+663 {
+664     <a href='#miracl'><font color='#0000FF'>miracl</font></a> <b>*</b><a href='#mip'><font color='#0000FF'>mip</font></a>;
+665     <font color='#0000FF'><b>struct</font></b> <a href='#ecc_dom'><font color='#0000FF'>ecc_dom</font></a> <a name='curve'><font color='#0000FF'>curve</font></a> <b>=</b>
+666     {
+667         <font color='#00FFFF'><I>0</I></font>
+668     };
+669     <font color='#0000FF'><b>struct</font></b> <a href='#ecc_pk'><font color='#0000FF'>ecc_pk</font></a> <a href='#pk_srv'><font color='#0000FF'>pk_srv</font></a>;
+670     <font color='#0000FF'><b>struct</font></b> <a href='#ecc_pk'><font color='#0000FF'>ecc_pk</font></a> <a name='pk_dvc'><font color='#0000FF'>pk_dvc</font></a>;
+671     <font color='#0000FF'><b>struct</font></b> <a href='#ecc_pk'><font color='#0000FF'>ecc_pk</font></a> <a href='#pk_tau'><font color='#0000FF'>pk_tau</font></a>;
+672     <font color='#0000FF'><b>struct</font></b> <a href='#ecc_sk'><font color='#0000FF'>ecc_sk</font></a> <a name='sk_srv'><font color='#0000FF'>sk_srv</font></a>;
+673     <font color='#0000FF'><b>struct</font></b> <a href='#device'><font color='#0000FF'>device</font></a> <a href='#dvc'><font color='#0000FF'>dvc</font></a>;
+674     <font color='#0000FF'><b>struct</font></b> <a name='hmac'><font color='#0000FF'>hmac</font></a> <a name='hm'><font color='#0000FF'>hm</font></a>;
+675     <font color='#0000FF'><b>char</font></b> <a name='__pin'><font color='#0000FF'>__pin</font></a>[]<b>=</b><font color='#FF0000'>&quot;12345&quot;</font>;
+676     <font color='#0000FF'><b>char</font></b> <a name='__msg'><font color='#0000FF'>__msg</font></a>[]<b>=</b><font color='#FF0000'>&quot;FooBar-16bytes!&quot;</font>;
+677     <font color='#0000FF'><b>char</font></b> <a name='__enc'><font color='#0000FF'>__enc</font></a>[<font color='#00FFFF'><I>1024</I></font>];
+678     <font color='#0000FF'><b>char</font></b> <a name='__dec'><font color='#0000FF'>__dec</font></a>[<font color='#00FFFF'><I>1024</I></font>];
+679     <font color='#0000FF'><b>char</font></b> <a name='__mma'><font color='#0000FF'>__mma</font></a>[<font color='#00FFFF'><I>32</I></font>];
+680     <font color='#0000FF'><b>char</font></b> <a name='__mmv'><font color='#0000FF'>__mmv</font></a>[<font color='#00FFFF'><I>32</I></font>];
+681     <font color='#0000FF'><b>char</font></b> <a name='__mmt'><font color='#0000FF'>__mmt</font></a>[<font color='#00FFFF'><I>32</I></font>];
+682     <font color='#0000FF'><b>char</font></b> <a name='__tau'><font color='#0000FF'>__tau</font></a>[<font color='#00FFFF'><I>256</I></font>];
+683     <font color='#0000FF'><b>char</font></b> <a name='__key'><font color='#0000FF'>__key</font></a>[<font color='#00FFFF'><I>32</I></font>];
+684     <a href='#octet'><font color='#0000FF'>octet</font></a> <a href='#msg'><font color='#0000FF'>msg</font></a> <b>=</b><a href='#Octet'><font color='#0000FF'>Octet</font></a>(<a name='__msg'><font color='#0000FF'>__msg</font></a>);
+685     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='cipher'><font color='#0000FF'>cipher</font></a> <b>=</b><a href='#Octet'><font color='#0000FF'>Octet</font></a>(<a name='__enc'><font color='#0000FF'>__enc</font></a>);
+686     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='dec'><font color='#0000FF'>dec</font></a> <b>=</b><a href='#Octet'><font color='#0000FF'>Octet</font></a>(<a name='__dec'><font color='#0000FF'>__dec</font></a>);
+687     <a href='#octet'><font color='#0000FF'>octet</font></a> <a href='#pin'><font color='#0000FF'>pin</font></a> <b>=</b><a href='#Octet'><font color='#0000FF'>Octet</font></a>(<a name='__pin'><font color='#0000FF'>__pin</font></a>);
+688     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='dvc_a'><font color='#0000FF'>dvc_a</font></a> <b>=</b><a href='#Octet'><font color='#0000FF'>Octet</font></a>(<a name='__mma'><font color='#0000FF'>__mma</font></a>);
+689     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='dvc_t'><font color='#0000FF'>dvc_t</font></a> <b>=</b><a href='#Octet'><font color='#0000FF'>Octet</font></a>(<a name='__mmt'><font color='#0000FF'>__mmt</font></a>);
+690     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='dvc_v'><font color='#0000FF'>dvc_v</font></a> <b>=</b><a href='#Octet'><font color='#0000FF'>Octet</font></a>(<a name='__mmv'><font color='#0000FF'>__mmv</font></a>);
+691     <a href='#octet'><font color='#0000FF'>octet</font></a> <a name='dvc_tau'><font color='#0000FF'>dvc_tau</font></a> <b>=</b><a href='#Octet'><font color='#0000FF'>Octet</font></a>(<a name='__tau'><font color='#0000FF'>__tau</font></a>);
+692     <a name='array'><font color='#0000FF'>array</font></a> <a href='#m'><font color='#0000FF'>m</font></a> <b>=</b><a name='CArray'><font color='#0000FF'>CArray</font></a>(<a name='__msg'><font color='#0000FF'>__msg</font></a>);
+693     <a name='array'><font color='#0000FF'>array</font></a> <a href='#key'><font color='#0000FF'>key</font></a> <b>=</b><a name='CArray'><font color='#0000FF'>CArray</font></a>(<a name='__key'><font color='#0000FF'>__key</font></a>);
+694     <font color='#0000FF'><b>int</font></b> <a href='#i'><font color='#0000FF'>i</font></a>;
+695     <a name='hmac_init'><font color='#0000FF'>hmac_init</font></a>(<b>&amp;</b><a name='hm'><font color='#0000FF'>hm</font></a><b>,</b><b>&amp;</b><a href='#key'><font color='#0000FF'>key</font></a>);
+696     <a name='hmac_hash'><font color='#0000FF'>hmac_hash</font></a>(<b>&amp;</b><a name='hm'><font color='#0000FF'>hm</font></a><b>,</b><a name='__key'><font color='#0000FF'>__key</font></a>);
+697     <a href='#m'><font color='#0000FF'>m</font></a><b>.</b><a href='#len'><font color='#0000FF'>len</font></a> <b>=</b><a href='#m'><font color='#0000FF'>m</font></a><b>.</b><a href='#max'><font color='#0000FF'>max</font></a>;
+698     <a name='array_map'><font color='#0000FF'>array_map</font></a>(<b>&amp;</b><a href='#m'><font color='#0000FF'>m</font></a><b>,</b><a name='map_plus_one'><font color='#0000FF'>map_plus_one</font></a>);
+699     <a name='pwd'><font color='#0000FF'>pwd</font></a>();
+700     <a href='#msg'><font color='#0000FF'>msg</font></a><b>.</b><a href='#len'><font color='#0000FF'>len</font></a> <b>=</b><a href='#msg'><font color='#0000FF'>msg</font></a><b>.</b><a href='#max'><font color='#0000FF'>max</font></a>;
+701     <a href='#pin'><font color='#0000FF'>pin</font></a><b>.</b><a href='#len'><font color='#0000FF'>len</font></a> <b>=</b><a href='#pin'><font color='#0000FF'>pin</font></a><b>.</b><a href='#max'><font color='#0000FF'>max</font></a> <b>-</b><font color='#00FFFF'><I>1</I></font>;
+702     <a href='#init_fake_rng'><font color='#0000FF'>init_fake_rng</font></a>(<a href='#rng'><font color='#0000FF'>rng</font></a>);
+703     <a name='printf'><font color='#0000FF'>printf</font></a>(<font color='#FF0000'>&quot;Play around with PRNG\n&quot;</font>);
+704     <font color='#0000FF'><b>for</font></b> (<a href='#i'><font color='#0000FF'>i</font></a> <b>=</b><font color='#00FFFF'><I>0</I></font>; <a href='#i'><font color='#0000FF'>i</font></a> <b>&lt;</b><font color='#00FFFF'><I>2</I></font>; <a href='#i'><font color='#0000FF'>i</font></a><b>+</b><b>+</b>)<a name='printf'><font color='#0000FF'>printf</font></a>(<font color='#FF0000'>&quot;%d\n&quot;</font><b>,</b><a name='strong_rng'><font color='#0000FF'>strong_rng</font></a>(<a href='#rng'><font color='#0000FF'>rng</font></a>));
+705     <a href='#mip'><font color='#0000FF'>mip</font></a> <b>=</b><a name='mirsys'><font color='#0000FF'>mirsys</font></a>(<font color='#00FFFF'><I>192</I></font><b>/</b><font color='#00FFFF'><I>8</I></font><b>,</b><font color='#00FFFF'><I>256</I></font>);
+706     <a href='#mip'><font color='#0000FF'>mip</font></a><b>-&gt;</b><a name='TRACER'><font color='#0000FF'>TRACER</font></a> <b>=</b><a href='#TRUE'><font color='#0000FF'>TRUE</font></a>;
+707     <a name='flx_curve_load'><font color='#0000FF'>flx_curve_load</font></a>(<font color='#FF0000'>&quot;src/resources/curves/common.ecs&quot;</font><b>,</b><b>&amp;</b><a name='curve'><font color='#0000FF'>curve</font></a>);
+708     <font color='#0000FF'><b>if</font></b> (<a name='flx_curve_activate'><font color='#0000FF'>flx_curve_activate</font></a>(<b>&amp;</b><a name='curve'><font color='#0000FF'>curve</font></a>))
+709     {
+710         <a name='fprintf'><font color='#0000FF'>fprintf</font></a>(<a name='stderr'><font color='#0000FF'>stderr</font></a><b>,</b><font color='#FF0000'>&quot;could not activate curve&quot;</font>);
+711         <font color='#0000FF'><b>return</font></b> <font color='#00FFFF'><I>1</I></font>;
+712         
+713     }
+714     <font color='#0000FF'><b>if</font></b> (<a href='#ecc_gen'><font color='#0000FF'>ecc_gen</font></a>(<b>&amp;</b><a name='curve'><font color='#0000FF'>curve</font></a><b>,</b><b>&amp;</b><a href='#pk_srv'><font color='#0000FF'>pk_srv</font></a><b>,</b><b>&amp;</b><a name='sk_srv'><font color='#0000FF'>sk_srv</font></a>))
+715     {
+716         <a name='fprintf'><font color='#0000FF'>fprintf</font></a>(<a name='stderr'><font color='#0000FF'>stderr</font></a><b>,</b><font color='#FF0000'>&quot;could not generate key pair\n&quot;</font>);
+717         <font color='#0000FF'><b>return</font></b> <font color='#00FFFF'><I>2</I></font>;
+718         
+719     }
+720     <a href='#ecies_enc'><font color='#0000FF'>ecies_enc</font></a>(<b>&amp;</b><a name='curve'><font color='#0000FF'>curve</font></a><b>,</b><b>&amp;</b><a href='#pk_srv'><font color='#0000FF'>pk_srv</font></a><b>,</b><b>&amp;</b><a href='#msg'><font color='#0000FF'>msg</font></a><b>,</b><b>&amp;</b><a name='cipher'><font color='#0000FF'>cipher</font></a>);
+721     <a href='#ecies_dec'><font color='#0000FF'>ecies_dec</font></a>(<b>&amp;</b><a name='curve'><font color='#0000FF'>curve</font></a><b>,</b><b>&amp;</b><a name='sk_srv'><font color='#0000FF'>sk_srv</font></a><b>,</b><b>&amp;</b><a name='cipher'><font color='#0000FF'>cipher</font></a><b>,</b><b>&amp;</b><a name='dec'><font color='#0000FF'>dec</font></a>);
+722     <a href='#pub'><font color='#0000FF'>pub</font></a><b>.</b><a href='#dom'><font color='#0000FF'>dom</font></a> <b>=</b><b>&amp;</b><a name='curve'><font color='#0000FF'>curve</font></a>;
+723     <a href='#ecsign_init'><font color='#0000FF'>ecsign_init</font></a>(<b>&amp;</b><a name='curve'><font color='#0000FF'>curve</font></a><b>,</b><b>&amp;</b><a href='#pk_srv'><font color='#0000FF'>pk_srv</font></a><b>,</b><b>&amp;</b><a href='#pin'><font color='#0000FF'>pin</font></a><b>,</b><b>&amp;</b><a name='dvc_a'><font color='#0000FF'>dvc_a</font></a><b>,</b><b>&amp;</b><a name='dvc_v'><font color='#0000FF'>dvc_v</font></a><b>,</b><b>&amp;</b><a name='dvc_t'><font color='#0000FF'>dvc_t</font></a><b>,</b><b>&amp;</b><a name='dvc_tau'><font color='#0000FF'>dvc_tau</font></a><b>,</b><b>&amp;</b><a name='pk_dvc'><font color='#0000FF'>pk_dvc</font></a><b>,</b><b>&amp;</b><a href='#pk_tau'><font color='#0000FF'>pk_tau</font></a>);
+724     <font color='#00FF00'>//ecsign_2p_init(&amp;dvc, &quot;Password&quot;, NULL);</font>
+725     <font color='#00FF00'>//ecsign_2p_start();</font>
+726     <font color='#0000FF'><b>return</font></b> <font color='#00FFFF'><I>0</I></font>;
+727     
+728 }
+729 
+</pre></html>
